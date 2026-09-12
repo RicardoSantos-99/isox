@@ -12,6 +12,10 @@ defmodule PixSpiCatalog.MixProject do
     ]
   end
 
+  def cli do
+    [preferred_envs: [precommit: :test, credo: :test]]
+  end
+
   def application do
     [
       extra_applications: [:logger, :xmerl]
