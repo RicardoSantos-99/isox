@@ -54,7 +54,45 @@ defmodule PixSpiCatalog.MixProject do
       main: "readme",
       extras: ["README.md", "CHANGELOG.md", "LICENSE"],
       source_url: @source_url,
-      source_ref: "v#{@version}"
+      source_ref: "v#{@version}",
+      groups_for_modules: [
+        Mensagens: [
+          PixSpiCatalog.AppHdr,
+          PixSpiCatalog.Registry,
+          PixSpiCatalog.Admi002,
+          PixSpiCatalog.Admi004,
+          PixSpiCatalog.Camt014,
+          PixSpiCatalog.Camt025,
+          PixSpiCatalog.Camt029,
+          PixSpiCatalog.Camt052,
+          PixSpiCatalog.Camt053,
+          PixSpiCatalog.Camt054,
+          PixSpiCatalog.Camt055,
+          PixSpiCatalog.Camt060,
+          PixSpiCatalog.Pacs002,
+          PixSpiCatalog.Pacs004,
+          PixSpiCatalog.Pacs008,
+          PixSpiCatalog.Pain009,
+          PixSpiCatalog.Pain011,
+          PixSpiCatalog.Pain012,
+          PixSpiCatalog.Pain013,
+          PixSpiCatalog.Pain014,
+          PixSpiCatalog.Pibr001,
+          PixSpiCatalog.Pibr002,
+          PixSpiCatalog.Reda014,
+          PixSpiCatalog.Reda016,
+          PixSpiCatalog.Reda017,
+          PixSpiCatalog.Reda022,
+          PixSpiCatalog.Reda031,
+          PixSpiCatalog.Reda041,
+          PixSpiCatalog.Trck002
+        ],
+        "Assinatura digital (avançado)": [
+          PixSpiCatalog.Xmldsig.Signer,
+          PixSpiCatalog.Xmldsig.Verifier,
+          PixSpiCatalog.Xmldsig.TestCA
+        ]
+      ]
     ]
   end
 

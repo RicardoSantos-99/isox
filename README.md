@@ -75,25 +75,72 @@ Mensagens cobertas: `Admi002`, `Admi004`, `Camt014`, `Camt025`, `Camt029`,
 `Pain014`, `Pibr001`, `Pibr002`, `Reda014`, `Reda016`, `Reda017`,
 `Reda022`, `Reda031`, `Reda041`, `Trck002`.
 
-## Assinatura digital (`PixSpiCatalog.Xmldsig`)
+## Assinatura digital
 
 Perfil de assinatura XMLDSig do Manual de Segurança do SFN Vol. II §3:
 canonicalização XML exclusiva, RSA-SHA256, e o perfil de três
 `<ds:Reference>` (`KeyInfo`, `AppHdr` com transformação
-enveloped-signature, `Document` sem atributo `URI`). Módulo apartado do
-resto do codec — não conhece estrutura de mensagem alguma.
+enveloped-signature, `Document` sem atributo `URI`).
 
 ```elixir
 # app_hdr_xml e document_xml precisam já vir em forma canônica exclusiva
 # — sign/4 não canonicaliza; a responsabilidade é de quem chama.
-signature_xml =
-  PixSpiCatalog.Xmldsig.Signer.sign(app_hdr_xml, document_xml, private_key_der, certificate_der)
+signature_xml = PixSpiCatalog.sign(app_hdr_xml, document_xml, minha_chave_privada_der, meu_certificado_der)
 
-:ok = PixSpiCatalog.Xmldsig.Verifier.verify(envelope_xml, certificate_der)
+:ok = PixSpiCatalog.verify(envelope_recebido_xml, certificado_de_quem_assinou_der)
 ```
 
-`PixSpiCatalog.Xmldsig.TestCA.generate/0` gera, em memória, um par de
-chave e certificado autoassinado para testes — nunca use em produção.
+Por trás desses dois, `PixSpiCatalog.Xmldsig.{Signer, Verifier}` — vá
+direto lá só se precisar de controle mais fino (montar um perfil com
+outro número de `<ds:Reference>`, por exemplo).
+
+### Certificados
+
+Assinar e verificar usam **duas chaves diferentes, uma de cada lado da
+conversa** — nunca as duas do mesmo lado:
+
+- Pra **assinar** o que você envia: sua própria chave privada + seu
+  próprio certificado.
+- Pra **verificar** o que você recebe: o certificado público de quem
+  assinou (nunca a chave privada de ninguém além da sua).
+
+Ou seja: se você é um PSP falando com o Banco Central, você guarda **sua**
+chave privada (pra assinar) e **o certificado público do Bacen**
+(pra verificar as respostas dele) — nunca a chave privada do Bacen, que
+só o Bacen tem. Do lado de quem simula o Bacen, é o espelho: chave
+privada própria pra assinar respostas, certificado público de cada PSP
+confiável pra verificar o que chega.
+
+**Pra testar localmente**, gere dois pares (um representando cada lado):
+
+```elixir
+psp = PixSpiCatalog.generate_test_certificate()
+bacen = PixSpiCatalog.generate_test_certificate()
+
+signature_xml = PixSpiCatalog.sign(app_hdr_xml, document_xml, psp.private_key_der, psp.certificate_der)
+# quem recebe verifica com o certificado do PSP, não com o próprio:
+:ok = PixSpiCatalog.verify(envelope_xml, psp.certificate_der)
+```
+
+`PixSpiCatalog.generate_test_certificate/0` gera tudo em memória — **nunca
+em produção**.
+
+**Em produção**, chave privada não entra em código nem em variável de
+ambiente em texto puro; o padrão comum é guardar caminhos de arquivo
+(`.pem`) em config/env e decodificar pra DER na sua aplicação, não dentro
+desta lib (que de propósito não lê arquivo, nem env, nem config — só
+recebe bytes):
+
+```elixir
+defp load_der!(path) do
+  [{_type, der, _cipher}] = path |> File.read!() |> :public_key.pem_decode()
+  der
+end
+
+minha_chave_privada_der = load_der!(System.fetch_env!("PIX_PSP_PRIVATE_KEY_PATH"))
+meu_certificado_der = load_der!(System.fetch_env!("PIX_PSP_CERT_PATH"))
+certificado_do_bacen_der = load_der!(System.fetch_env!("PIX_BACEN_CERT_PATH"))
+```
 
 Para medir o throughput local de assinar/verificar:
 

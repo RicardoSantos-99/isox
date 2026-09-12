@@ -1,12 +1,13 @@
 defmodule PixSpiCatalog.Generator do
-  @moduledoc """
-  Emite, a partir do schema já resolvido (`Xsd.Compiler`), o texto-fonte
-  de um módulo `PixSpiCatalog.Generated.<Mensagem>.<Versao>` (ADR 0004).
-
-  O `AppHdr` (BAH, `head.001`) é idêntico em todo XSD do catálogo — em vez
-  de embutir uma cópia por mensagem, o módulo gerado referencia
-  `PixSpiCatalog.Generated.Head001.type/0` em tempo de execução.
-  """
+  # Emite, a partir do schema já resolvido (Xsd.Compiler), o texto-fonte de
+  # um módulo PixSpiCatalog.Generated.<Mensagem>.<Versao> (ADR 0004).
+  #
+  # O AppHdr (BAH, head.001) é idêntico em todo XSD do catálogo — em vez de
+  # embutir uma cópia por mensagem, o módulo gerado referencia
+  # PixSpiCatalog.Generated.Head001.type/0 em tempo de execução.
+  #
+  # Suporte de mix catalog.gen — não é API pública da lib.
+  @moduledoc false
 
   alias PixSpiCatalog.Schema.Element
 
@@ -74,7 +75,7 @@ defmodule PixSpiCatalog.Generator do
   def head001_source(module \\ "PixSpiCatalog.Generated.Head001", type) do
     """
     defmodule #{module} do
-      @moduledoc "BAH (`head.001`) — igual em toda mensagem do catálogo."
+      @moduledoc false
 
       def type, do: #{inspect(type, limit: :infinity, printable_limit: :infinity)}
     end

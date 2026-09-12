@@ -1,13 +1,14 @@
 defmodule PixSpiCatalog.Xmldsig.Transforms do
-  @moduledoc """
-  Transformação enveloped-signature
-  (`http://www.w3.org/2000/09/xmldsig#enveloped-signature`, ADR 0006): tira
-  o próprio elemento `Signature` da árvore antes de canonicalizar — tanto o
-  `AppHdr` do perfil SPI quanto o elemento raiz do perfil DICT usam essa
-  mesma transformação (Manual de Segurança Vol. II, tabelas 3 e 4);
-  verificar precisa recomputar o digest sem a assinatura que está sendo
-  verificada.
-  """
+  # Transformação enveloped-signature
+  # (http://www.w3.org/2000/09/xmldsig#enveloped-signature, ADR 0006): tira
+  # o próprio elemento Signature da árvore antes de canonicalizar — tanto o
+  # AppHdr do perfil SPI quanto o elemento raiz do perfil DICT usam essa
+  # mesma transformação (Manual de Segurança Vol. II, tabelas 3 e 4);
+  # verificar precisa recomputar o digest sem a assinatura que está sendo
+  # verificada.
+  #
+  # Usado internamente por Signer/Verifier — não é API pública da lib.
+  @moduledoc false
 
   import PixSpiCatalog.Xmldsig.Xml
 

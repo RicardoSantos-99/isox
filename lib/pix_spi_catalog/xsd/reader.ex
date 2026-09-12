@@ -1,13 +1,14 @@
 defmodule PixSpiCatalog.Xsd.Reader do
-  @moduledoc """
-  Lê um arquivo `.xsd` do catálogo com `:xmerl` e devolve os tipos nomeados
-  (`complexType`, `simpleType`, `group`, `element` no nível raiz do schema)
-  num mapa, prontos para o `Xsd.Compiler` resolver recursivamente.
-
-  Não interpreta namespace de verdade — os XSDs do catálogo não usam
-  `xs:import`, então basta o nome local de cada tag (`element`, não
-  `xs:element`) e comparar por nome de tipo dentro do próprio arquivo.
-  """
+  # Lê um arquivo .xsd do catálogo com :xmerl e devolve os tipos nomeados
+  # (complexType, simpleType, group, element no nível raiz do schema)
+  # num mapa, prontos para o Xsd.Compiler resolver recursivamente.
+  #
+  # Não interpreta namespace de verdade — os XSDs do catálogo não usam
+  # xs:import, então basta o nome local de cada tag (element, não
+  # xs:element) e comparar por nome de tipo dentro do próprio arquivo.
+  #
+  # Suporte de mix catalog.gen — não é API pública da lib.
+  @moduledoc false
 
   import PixSpiCatalog.Xml.Records
 

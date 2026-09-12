@@ -1,22 +1,24 @@
 defmodule PixSpiCatalog.Xml.Codec do
-  @moduledoc """
-  Motor genérico de `parse`/`build` orientado a `PixSpiCatalog.Schema` — não
-  conhece nenhuma mensagem específica, só percorre a árvore do schema contra
-  o XML (na entrada) ou contra o termo genérico (na saída).
-
-  O termo genérico é: valor simples vira string; elemento complexo normal
-  vira mapa `%{tag => valor}` (lista quando `max` permite repetição);
-  `simpleContent` (valor + atributo, ex. `IntrBkSttlmAmt`) vira
-  `%{value: ..., attributes: %{tag => valor}}`; `:opaque` (`<Sgntr>`) vira a
-  string do XML interno, sem interpretar.
-
-  Validação (pattern/enum/tamanho) acontece no `parse`; o `build` confia no
-  termo que recebe.
-
-  `compile_template/3` + `render/2` são a terceira API do ADR 0003: compila
-  um termo com lacunas (`gap/1`) uma vez, e cada renderização só preenche
-  as lacunas — sem percorrer o schema de novo.
-  """
+  # Motor genérico de parse/build orientado a PixSpiCatalog.Schema — não
+  # conhece nenhuma mensagem específica, só percorre a árvore do schema
+  # contra o XML (na entrada) ou contra o termo genérico (na saída).
+  #
+  # O termo genérico é: valor simples vira string; elemento complexo normal
+  # vira mapa %{tag => valor} (lista quando max permite repetição);
+  # simpleContent (valor + atributo, ex. IntrBkSttlmAmt) vira
+  # %{value: ..., attributes: %{tag => valor}}; :opaque (<Sgntr>) vira a
+  # string do XML interno, sem interpretar.
+  #
+  # Validação (pattern/enum/tamanho) acontece no parse; o build confia no
+  # termo que recebe.
+  #
+  # compile_template/3 + render/2 são a terceira API do ADR 0003: compila
+  # um termo com lacunas (gap/1) uma vez, e cada renderização só preenche
+  # as lacunas — sem percorrer o schema de novo.
+  #
+  # Motor interno — não faz parte da API pública da lib (quem consome usa
+  # os módulos de mensagem, ex. PixSpiCatalog.Pacs008).
+  @moduledoc false
 
   import PixSpiCatalog.Xml.Records
 

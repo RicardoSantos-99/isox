@@ -1,5 +1,5 @@
 defmodule PixSpiCatalog.Generated.Head001 do
-  @moduledoc "BAH (`head.001`) — igual em toda mensagem do catálogo."
+  @moduledoc false
 
   def type,
     do: %PixSpiCatalog.Schema.ComplexType{

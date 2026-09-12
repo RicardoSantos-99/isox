@@ -1,22 +1,23 @@
 defmodule PixSpiCatalog.Xsd.Compiler do
-  @moduledoc """
-  Resolve recursivamente as definições lidas pelo `Xsd.Reader` numa árvore
-  de `PixSpiCatalog.Schema` — sem indireção por nome: todo tipo referenciado
-  já sai embutido no lugar.
-
-  Cobre o subconjunto de XSD usado pelo catálogo (confirmado por varredura
-  em todos os XSDs de v5.12.1/v5.13.1): `element`, `complexType`,
-  `simpleType`/`restriction`, `choice`, `group` (só `ref`, nunca aninhado
-  fora de uma sequência ou escolha), `simpleContent`/`extension`/`attribute`
-  (o padrão valor+moeda, ex. `IntrBkSttlmAmt`), `element ref=` e `xs:any`
-  (tratado como opaco — é só o `<Sgntr>`).
-
-  `xs:group ref=` dentro de um `xs:choice` (só ocorre em `reda.022`) vira
-  uma opção só — a lista de elementos do grupo inteiro (`Schema.Choice`),
-  não elementos soltos achatados na escolha. Um grupo de 1 elemento e um
-  grupo de N elementos são tratados igual: a opção é sempre a lista de
-  elementos do grupo.
-  """
+  # Resolve recursivamente as definições lidas pelo Xsd.Reader numa árvore
+  # de PixSpiCatalog.Schema — sem indireção por nome: todo tipo referenciado
+  # já sai embutido no lugar.
+  #
+  # Cobre o subconjunto de XSD usado pelo catálogo (confirmado por varredura
+  # em todos os XSDs de v5.12.1/v5.13.1): element, complexType,
+  # simpleType/restriction, choice, group (só ref, nunca aninhado fora de
+  # uma sequência ou escolha), simpleContent/extension/attribute (o padrão
+  # valor+moeda, ex. IntrBkSttlmAmt), element ref= e xs:any (tratado como
+  # opaco — é só o <Sgntr>).
+  #
+  # xs:group ref= dentro de um xs:choice (só ocorre em reda.022) vira uma
+  # opção só — a lista de elementos do grupo inteiro (Schema.Choice), não
+  # elementos soltos achatados na escolha. Um grupo de 1 elemento e um
+  # grupo de N elementos são tratados igual: a opção é sempre a lista de
+  # elementos do grupo.
+  #
+  # Suporte de mix catalog.gen — não é API pública da lib.
+  @moduledoc false
 
   alias PixSpiCatalog.Schema.{Attribute, Choice, ComplexType, Element, SimpleType}
   alias PixSpiCatalog.Xsd.Reader

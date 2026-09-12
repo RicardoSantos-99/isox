@@ -1,16 +1,17 @@
 defmodule PixSpiCatalog.Xmldsig.Canonicalizer do
-  @moduledoc """
-  Canonicalização XML exclusiva (`http://www.w3.org/2001/10/xml-exc-c14n#`,
-  ADR 0006) — só o suficiente para o que o catálogo do SPI realmente usa:
-  sem comentários, sem instruções de processamento, sem `xml:lang`/
-  `xml:space`, sem lista de prefixos inclusivos (`InclusiveNamespaces`).
-
-  Um nó de namespace só é declarado num elemento se for visivelmente
-  utilizado ali (pelo próprio elemento ou por um atributo seu) e ainda não
-  tiver sido renderizado por um ancestral **na árvore de saída** — não
-  necessariamente onde a declaração vivia no XML de origem. É essa regra,
-  não a localização original da declaração, que a torna "exclusiva".
-  """
+  # Canonicalização XML exclusiva (http://www.w3.org/2001/10/xml-exc-c14n#,
+  # ADR 0006) — só o suficiente para o que o catálogo do SPI realmente usa:
+  # sem comentários, sem instruções de processamento, sem xml:lang/
+  # xml:space, sem lista de prefixos inclusivos (InclusiveNamespaces).
+  #
+  # Um nó de namespace só é declarado num elemento se for visivelmente
+  # utilizado ali (pelo próprio elemento ou por um atributo seu) e ainda não
+  # tiver sido renderizado por um ancestral na árvore de saída — não
+  # necessariamente onde a declaração vivia no XML de origem. É essa regra,
+  # não a localização original da declaração, que a torna "exclusiva".
+  #
+  # Usado internamente por Signer/Verifier — não é API pública da lib.
+  @moduledoc false
 
   import PixSpiCatalog.Xmldsig.Xml
 

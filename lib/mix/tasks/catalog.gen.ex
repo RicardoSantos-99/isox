@@ -4,8 +4,8 @@ defmodule Mix.Tasks.Catalog.Gen do
   @moduledoc """
   Lê todos os `.xsd` de mensagem em `--xsd-dir` (exceto `xmldsig`, que não é
   mensagem) e gera, em `--out`, um módulo `PixSpiCatalog.Generated.<Mensagem>.<Versao>`
-  por arquivo, mais `PixSpiCatalog.Generated.Head001` (o BAH, compartilhado —
-  ADR 0004).
+  por arquivo, mais um módulo interno com o BAH (`head.001`), compartilhado
+  entre todas as mensagens (ADR 0004).
 
   Não redistribui XSD nenhum: só lê do caminho informado, nunca de um
   arquivo versionado neste repositório (ADR 0009).

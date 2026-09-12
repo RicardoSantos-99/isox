@@ -2,20 +2,19 @@ defmodule PixSpiCatalog.Pacs008 do
   @moduledoc """
   Representação de domínio do pacs.008 (ordem de crédito), versões 1.15 e
   1.16 (ADR 0002) — campos com nome amigável em vez do mapa genérico cru
-  que `PixSpiCatalog.Xml.Codec` produz.
+  que o motor de codec interno produz.
 
   Cobre o caminho comum de uma ordem de crédito do Pix: os campos sempre
   obrigatórios da árvore real do XSD, mais os opcionais realmente usados
   (`InstrId`, `TxId`, `InitgPty`, `Prxy`/proxy, `RmtInf.Ustrd`). Fica de
-  fora `Tax` e `RmtInf.Strd` — ramos raros fora do fluxo padrão do Pix;
-  quem precisar deles usa o codec genérico direto (`Registry`/`Codec`).
+  fora `Tax` e `RmtInf.Strd` — ramos raros fora do fluxo padrão do Pix.
 
-  `build/3` valida antes de montar: `Codec.build/3` confia no term que
-  recebe (não valida pattern/enum/obrigatoriedade), então essa camada
-  confere os campos obrigatórios do domínio e, depois de montar o XML,
-  faz o caminho de volta (`parse` do próprio módulo gerado) pra reaproveitar
-  a validação de pattern/enum/cardinalidade que o parser já faz — sem
-  duplicar regra nenhuma.
+  `build/3` valida antes de montar: o motor de codec interno confia no
+  termo que recebe (não valida pattern/enum/obrigatoriedade), então essa
+  camada confere os campos obrigatórios do domínio e, depois de montar o
+  XML, faz o caminho de volta (`parse` do próprio módulo gerado) pra
+  reaproveitar a validação de pattern/enum/cardinalidade que o parser já
+  faz — sem duplicar regra nenhuma.
   """
 
   alias PixSpiCatalog.AppHdr
