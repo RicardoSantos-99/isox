@@ -163,16 +163,47 @@ defmodule PixSpiCatalog.Xml.Codec do
   end
 
   defp extrair_item(%Escolha{opcoes: opcoes, min: min}, agrupados) do
-    case Enum.find(opcoes, &Map.has_key?(agrupados, &1.tag)) do
+    case melhor_opcao(opcoes, &Map.has_key?(agrupados, &1)) do
       nil when min == 0 ->
         %{}
 
       nil ->
-        raise "nenhuma opção da escolha está presente: #{inspect(Enum.map(opcoes, & &1.tag))}"
+        raise "nenhuma opção da escolha está presente: #{inspect(Enum.map(opcoes, &tags_da_opcao/1))}"
 
-      elemento ->
-        extrair_item(elemento, agrupados)
+      opcao ->
+        extrair_opcao(opcao, agrupados)
     end
+  end
+
+  # Uma opção de `Escolha` é ou 1 elemento, ou (quando vem de `xs:group ref=`
+  # dentro de um `xs:choice` com mais de 1 elemento no grupo) a lista de
+  # elementos do grupo inteiro. Duas opções de grupo podem compartilhar tag
+  # (ex. reda.022: `ReqdModContato` e `ReqdModDiretor` têm PhneNb/EmailAdr/
+  # Rspnsblty em comum, só `Nm` distingue) — "presente" não basta, escolhe a
+  # opção com MAIS tags batendo, não a primeira com alguma batendo, senão um
+  # exemplar do ramo com o campo distintivo ausente escolhe o ramo errado e
+  # perde esse campo.
+  defp melhor_opcao(opcoes, chave_presente?) do
+    opcoes
+    |> Enum.map(&{&1, contagem_presente(&1, chave_presente?)})
+    |> Enum.filter(fn {_opcao, contagem} -> contagem > 0 end)
+    |> Enum.max_by(fn {_opcao, contagem} -> contagem end, fn -> {nil, 0} end)
+    |> elem(0)
+  end
+
+  defp contagem_presente(%Elemento{tag: tag}, chave_presente?),
+    do: if(chave_presente?.(tag), do: 1, else: 0)
+
+  defp contagem_presente(membros, chave_presente?) when is_list(membros),
+    do: Enum.count(membros, &chave_presente?.(&1.tag))
+
+  defp tags_da_opcao(%Elemento{tag: tag}), do: tag
+  defp tags_da_opcao(membros) when is_list(membros), do: Enum.map(membros, & &1.tag)
+
+  defp extrair_opcao(%Elemento{} = elemento, agrupados), do: extrair_item(elemento, agrupados)
+
+  defp extrair_opcao(membros, agrupados) when is_list(membros) do
+    Enum.reduce(membros, %{}, fn item, acc -> Map.merge(acc, extrair_item(item, agrupados)) end)
   end
 
   defp agrupar_por_tag(no) do
@@ -290,11 +321,16 @@ defmodule PixSpiCatalog.Xml.Codec do
   end
 
   defp construir_item(%Escolha{opcoes: opcoes}, termo) do
-    case Enum.find(opcoes, &Map.has_key?(termo, &1.tag)) do
+    case melhor_opcao(opcoes, &Map.has_key?(termo, &1)) do
       nil -> ""
-      elemento -> construir_item(elemento, termo)
+      opcao -> construir_opcao(opcao, termo)
     end
   end
+
+  defp construir_opcao(%Elemento{} = elemento, termo), do: construir_item(elemento, termo)
+
+  defp construir_opcao(membros, termo) when is_list(membros),
+    do: Enum.map_join(membros, "", &construir_item(&1, termo))
 
   defp escapar_texto(texto) do
     texto

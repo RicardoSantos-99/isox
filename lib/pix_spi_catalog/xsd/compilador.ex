@@ -11,10 +11,11 @@ defmodule PixSpiCatalog.Xsd.Compilador do
   (o padrão valor+moeda, ex. `IntrBkSttlmAmt`), `element ref=` e `xs:any`
   (tratado como opaco — é só o `<Sgntr>`).
 
-  Limitação conhecida: `xs:group ref=` dentro de um `xs:choice` (só ocorre
-  em `reda.022`) é achatado como se cada elemento do grupo fosse uma opção
-  independente da escolha, em vez de "o grupo inteiro é uma opção". Corrige
-  quando `reda.022` ganhar lógica de negócio (Fase 6.4).
+  `xs:group ref=` dentro de um `xs:choice` (só ocorre em `reda.022`) vira
+  uma opção só — a lista de elementos do grupo inteiro (`Schema.Escolha`),
+  não elementos soltos achatados na escolha. Um grupo de 1 elemento e um
+  grupo de N elementos são tratados igual: a opção é sempre a lista de
+  elementos do grupo.
   """
 
   alias PixSpiCatalog.Schema.{Atributo, Elemento, Escolha, TipoComplexo, TipoSimples}
@@ -134,7 +135,12 @@ defmodule PixSpiCatalog.Xsd.Compilador do
       |> Enum.flat_map(fn filho ->
         case Leitor.tag_local(filho) do
           "element" -> [resolver_elemento(filho, definicoes)]
-          "group" -> resolver_grupo_ref(filho, definicoes)
+          # o grupo inteiro é 1 opção (a lista dos seus elementos) — não
+          # achata os elementos do grupo como opções soltas da escolha,
+          # senão um grupo de N campos vira N opções independentes em vez
+          # de "todos os N juntos, ou nenhum" (bug real: perdia campo no
+          # parse quando duas opções de grupo compartilhavam nome de tag).
+          "group" -> [resolver_grupo_ref(filho, definicoes)]
           _ -> []
         end
       end)

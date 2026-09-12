@@ -163,126 +163,130 @@ defmodule PixSpiCatalog.Gerado.Reda022.V1_4 do
                                           conteudo: [
                                             %PixSpiCatalog.Schema.Escolha{
                                               opcoes: [
-                                                %PixSpiCatalog.Schema.Elemento{
-                                                  tag: "PhneNb",
-                                                  tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                    base: "string",
-                                                    pattern: "\\+(.+)-(.+)",
-                                                    enum: nil,
-                                                    max_length: 30,
-                                                    min_length: nil
+                                                [
+                                                  %PixSpiCatalog.Schema.Elemento{
+                                                    tag: "PhneNb",
+                                                    tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                      base: "string",
+                                                      pattern: "\\+(.+)-(.+)",
+                                                      enum: nil,
+                                                      max_length: 30,
+                                                      min_length: nil
+                                                    },
+                                                    min: 1,
+                                                    max: 1
                                                   },
-                                                  min: 1,
-                                                  max: 1
-                                                },
-                                                %PixSpiCatalog.Schema.Elemento{
-                                                  tag: "MobNb",
-                                                  tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                    base: "string",
-                                                    pattern: "\\+(.+)-(.+)",
-                                                    enum: nil,
-                                                    max_length: 30,
-                                                    min_length: nil
+                                                  %PixSpiCatalog.Schema.Elemento{
+                                                    tag: "MobNb",
+                                                    tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                      base: "string",
+                                                      pattern: "\\+(.+)-(.+)",
+                                                      enum: nil,
+                                                      max_length: 30,
+                                                      min_length: nil
+                                                    },
+                                                    min: 0,
+                                                    max: 1
                                                   },
-                                                  min: 0,
-                                                  max: 1
-                                                },
-                                                %PixSpiCatalog.Schema.Elemento{
-                                                  tag: "FaxNb",
-                                                  tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                    base: "string",
-                                                    pattern: "\\+(.+)-(.+)",
-                                                    enum: nil,
-                                                    max_length: 30,
-                                                    min_length: nil
+                                                  %PixSpiCatalog.Schema.Elemento{
+                                                    tag: "FaxNb",
+                                                    tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                      base: "string",
+                                                      pattern: "\\+(.+)-(.+)",
+                                                      enum: nil,
+                                                      max_length: 30,
+                                                      min_length: nil
+                                                    },
+                                                    min: 0,
+                                                    max: 1
                                                   },
-                                                  min: 0,
-                                                  max: 1
-                                                },
-                                                %PixSpiCatalog.Schema.Elemento{
-                                                  tag: "EmailAdr",
-                                                  tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                    base: "string",
-                                                    pattern: "(.+)@(.+)",
-                                                    enum: nil,
-                                                    max_length: 77,
-                                                    min_length: nil
+                                                  %PixSpiCatalog.Schema.Elemento{
+                                                    tag: "EmailAdr",
+                                                    tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                      base: "string",
+                                                      pattern: "(.+)@(.+)",
+                                                      enum: nil,
+                                                      max_length: 77,
+                                                      min_length: nil
+                                                    },
+                                                    min: 1,
+                                                    max: 1
                                                   },
-                                                  min: 1,
-                                                  max: 1
-                                                },
-                                                %PixSpiCatalog.Schema.Elemento{
-                                                  tag: "Rspnsblty",
-                                                  tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                    base: "string",
-                                                    pattern: nil,
-                                                    enum: ["CONTATOPSP", "DIRETORPSP"],
-                                                    max_length: nil,
-                                                    min_length: nil
+                                                  %PixSpiCatalog.Schema.Elemento{
+                                                    tag: "Rspnsblty",
+                                                    tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                      base: "string",
+                                                      pattern: nil,
+                                                      enum: ["CONTATOPSP", "DIRETORPSP"],
+                                                      max_length: nil,
+                                                      min_length: nil
+                                                    },
+                                                    min: 1,
+                                                    max: 1
+                                                  }
+                                                ],
+                                                [
+                                                  %PixSpiCatalog.Schema.Elemento{
+                                                    tag: "Nm",
+                                                    tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                      base: "string",
+                                                      pattern: nil,
+                                                      enum: nil,
+                                                      max_length: 140,
+                                                      min_length: 1
+                                                    },
+                                                    min: 1,
+                                                    max: 1
                                                   },
-                                                  min: 1,
-                                                  max: 1
-                                                },
-                                                %PixSpiCatalog.Schema.Elemento{
-                                                  tag: "Nm",
-                                                  tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                    base: "string",
-                                                    pattern: nil,
-                                                    enum: nil,
-                                                    max_length: 140,
-                                                    min_length: 1
+                                                  %PixSpiCatalog.Schema.Elemento{
+                                                    tag: "PhneNb",
+                                                    tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                      base: "string",
+                                                      pattern: "\\+(.+)-(.+)",
+                                                      enum: nil,
+                                                      max_length: 30,
+                                                      min_length: nil
+                                                    },
+                                                    min: 1,
+                                                    max: 1
                                                   },
-                                                  min: 1,
-                                                  max: 1
-                                                },
-                                                %PixSpiCatalog.Schema.Elemento{
-                                                  tag: "PhneNb",
-                                                  tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                    base: "string",
-                                                    pattern: "\\+(.+)-(.+)",
-                                                    enum: nil,
-                                                    max_length: 30,
-                                                    min_length: nil
+                                                  %PixSpiCatalog.Schema.Elemento{
+                                                    tag: "MobNb",
+                                                    tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                      base: "string",
+                                                      pattern: "\\+(.+)-(.+)",
+                                                      enum: nil,
+                                                      max_length: 30,
+                                                      min_length: nil
+                                                    },
+                                                    min: 0,
+                                                    max: 1
                                                   },
-                                                  min: 1,
-                                                  max: 1
-                                                },
-                                                %PixSpiCatalog.Schema.Elemento{
-                                                  tag: "MobNb",
-                                                  tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                    base: "string",
-                                                    pattern: "\\+(.+)-(.+)",
-                                                    enum: nil,
-                                                    max_length: 30,
-                                                    min_length: nil
+                                                  %PixSpiCatalog.Schema.Elemento{
+                                                    tag: "EmailAdr",
+                                                    tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                      base: "string",
+                                                      pattern: "(.+)@(.+)",
+                                                      enum: nil,
+                                                      max_length: 77,
+                                                      min_length: nil
+                                                    },
+                                                    min: 1,
+                                                    max: 1
                                                   },
-                                                  min: 0,
-                                                  max: 1
-                                                },
-                                                %PixSpiCatalog.Schema.Elemento{
-                                                  tag: "EmailAdr",
-                                                  tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                    base: "string",
-                                                    pattern: "(.+)@(.+)",
-                                                    enum: nil,
-                                                    max_length: 77,
-                                                    min_length: nil
-                                                  },
-                                                  min: 1,
-                                                  max: 1
-                                                },
-                                                %PixSpiCatalog.Schema.Elemento{
-                                                  tag: "Rspnsblty",
-                                                  tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                    base: "string",
-                                                    pattern: nil,
-                                                    enum: ["CONTATOPSP", "DIRETORPSP"],
-                                                    max_length: nil,
-                                                    min_length: nil
-                                                  },
-                                                  min: 1,
-                                                  max: 1
-                                                }
+                                                  %PixSpiCatalog.Schema.Elemento{
+                                                    tag: "Rspnsblty",
+                                                    tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                      base: "string",
+                                                      pattern: nil,
+                                                      enum: ["CONTATOPSP", "DIRETORPSP"],
+                                                      max_length: nil,
+                                                      min_length: nil
+                                                    },
+                                                    min: 1,
+                                                    max: 1
+                                                  }
+                                                ]
                                               ],
                                               min: 1,
                                               max: 1
@@ -294,70 +298,74 @@ defmodule PixSpiCatalog.Gerado.Reda022.V1_4 do
                                         min: 1,
                                         max: 1
                                       },
-                                      %PixSpiCatalog.Schema.Elemento{
-                                        tag: "TechAdr",
-                                        tipo: %PixSpiCatalog.Schema.TipoComplexo{
-                                          conteudo: [
-                                            %PixSpiCatalog.Schema.Escolha{
-                                              opcoes: [
-                                                %PixSpiCatalog.Schema.Elemento{
-                                                  tag: "TechAdr",
-                                                  tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                    base: "string",
-                                                    pattern: "[a-zA-Z0-9]{8}",
-                                                    enum: nil,
-                                                    max_length: nil,
-                                                    min_length: nil
-                                                  },
-                                                  min: 1,
-                                                  max: 1
-                                                }
-                                              ],
-                                              min: 1,
-                                              max: 1
-                                            }
-                                          ],
-                                          atributos: [],
-                                          texto: nil
-                                        },
-                                        min: 1,
-                                        max: 1
-                                      },
-                                      %PixSpiCatalog.Schema.Elemento{
-                                        tag: "MktSpcfcAttr",
-                                        tipo: %PixSpiCatalog.Schema.TipoComplexo{
-                                          conteudo: [
-                                            %PixSpiCatalog.Schema.Elemento{
-                                              tag: "Nm",
-                                              tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                base: "string",
-                                                pattern: nil,
-                                                enum: ["CPFDIRETOR"],
-                                                max_length: nil,
-                                                min_length: nil
+                                      [
+                                        %PixSpiCatalog.Schema.Elemento{
+                                          tag: "TechAdr",
+                                          tipo: %PixSpiCatalog.Schema.TipoComplexo{
+                                            conteudo: [
+                                              %PixSpiCatalog.Schema.Escolha{
+                                                opcoes: [
+                                                  %PixSpiCatalog.Schema.Elemento{
+                                                    tag: "TechAdr",
+                                                    tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                      base: "string",
+                                                      pattern: "[a-zA-Z0-9]{8}",
+                                                      enum: nil,
+                                                      max_length: nil,
+                                                      min_length: nil
+                                                    },
+                                                    min: 1,
+                                                    max: 1
+                                                  }
+                                                ],
+                                                min: 1,
+                                                max: 1
+                                              }
+                                            ],
+                                            atributos: [],
+                                            texto: nil
+                                          },
+                                          min: 1,
+                                          max: 1
+                                        }
+                                      ],
+                                      [
+                                        %PixSpiCatalog.Schema.Elemento{
+                                          tag: "MktSpcfcAttr",
+                                          tipo: %PixSpiCatalog.Schema.TipoComplexo{
+                                            conteudo: [
+                                              %PixSpiCatalog.Schema.Elemento{
+                                                tag: "Nm",
+                                                tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                  base: "string",
+                                                  pattern: nil,
+                                                  enum: ["CPFDIRETOR"],
+                                                  max_length: nil,
+                                                  min_length: nil
+                                                },
+                                                min: 1,
+                                                max: 1
                                               },
-                                              min: 1,
-                                              max: 1
-                                            },
-                                            %PixSpiCatalog.Schema.Elemento{
-                                              tag: "Val",
-                                              tipo: %PixSpiCatalog.Schema.TipoSimples{
-                                                base: "string",
-                                                pattern: "[0-9]{11}",
-                                                enum: nil,
-                                                max_length: nil,
-                                                min_length: nil
-                                              },
-                                              min: 1,
-                                              max: 1
-                                            }
-                                          ],
-                                          atributos: [],
-                                          texto: nil
-                                        },
-                                        min: 1,
-                                        max: 1
-                                      }
+                                              %PixSpiCatalog.Schema.Elemento{
+                                                tag: "Val",
+                                                tipo: %PixSpiCatalog.Schema.TipoSimples{
+                                                  base: "string",
+                                                  pattern: "[0-9]{11}",
+                                                  enum: nil,
+                                                  max_length: nil,
+                                                  min_length: nil
+                                                },
+                                                min: 1,
+                                                max: 1
+                                              }
+                                            ],
+                                            atributos: [],
+                                            texto: nil
+                                          },
+                                          min: 1,
+                                          max: 1
+                                        }
+                                      ]
                                     ],
                                     min: 1,
                                     max: 1

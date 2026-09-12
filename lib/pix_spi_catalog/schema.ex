@@ -43,12 +43,18 @@ defmodule PixSpiCatalog.Schema do
   end
 
   defmodule Escolha do
-    @moduledoc "Um `<xs:choice>`: exatamente um dos elementos listados aparece (ou nenhum, se `min: 0`)."
+    @moduledoc """
+    Um `<xs:choice>`: exatamente uma das opções listadas aparece (ou
+    nenhuma, se `min: 0`). Uma opção é normalmente 1 elemento; quando vem
+    de `xs:group ref=` dentro do `<xs:choice>` e o grupo tem mais de 1
+    elemento, a opção é a lista de elementos do grupo inteiro — todos
+    aparecem juntos, ou nenhum (ex.: `reda.022`, `ReqdModContatoChoice`).
+    """
     @enforce_keys [:opcoes]
     defstruct [:opcoes, min: 1, max: 1]
 
     @type t :: %__MODULE__{
-            opcoes: [Elemento.t()],
+            opcoes: [Elemento.t() | [Elemento.t()]],
             min: non_neg_integer(),
             max: pos_integer() | :ilimitado
           }

@@ -82,6 +82,58 @@ defmodule PixSpiCatalog.Xml.CodecTest do
     assert xml =~ "<B>valor</B>"
   end
 
+  describe "choice com xs:group ref= (opção = grupo de vários elementos)" do
+    # Mesmo formato do reda.022 real (ReqdModContatoChoice): duas opções de
+    # grupo com tags em comum — só um campo distingue qual ramo é.
+    @schema %Elemento{
+      tag: "CtctDtls",
+      tipo: %TipoComplexo{
+        conteudo: [
+          %Escolha{
+            opcoes: [
+              [
+                %Elemento{tag: "PhneNb", tipo: %TipoSimples{}},
+                %Elemento{tag: "FaxNb", tipo: %TipoSimples{}, min: 0},
+                %Elemento{tag: "EmailAdr", tipo: %TipoSimples{}}
+              ],
+              [
+                %Elemento{tag: "Nm", tipo: %TipoSimples{}},
+                %Elemento{tag: "PhneNb", tipo: %TipoSimples{}},
+                %Elemento{tag: "EmailAdr", tipo: %TipoSimples{}}
+              ]
+            ]
+          }
+        ]
+      }
+    }
+
+    test "ramo sem o campo distintivo: todos os campos do grupo saem no parse" do
+      xml = "<CtctDtls><PhneNb>1</PhneNb><FaxNb>2</FaxNb><EmailAdr>a@a.com</EmailAdr></CtctDtls>"
+
+      assert {:ok, termo} = Codec.parse(@schema, xml)
+      assert termo == %{"PhneNb" => "1", "FaxNb" => "2", "EmailAdr" => "a@a.com"}
+    end
+
+    test "ramos com tags em comum: o campo distintivo (Nm) escolhe o ramo certo, não se perde" do
+      xml = "<CtctDtls><Nm>Fulano</Nm><PhneNb>1</PhneNb><EmailAdr>a@a.com</EmailAdr></CtctDtls>"
+
+      assert {:ok, termo} = Codec.parse(@schema, xml)
+      assert termo == %{"Nm" => "Fulano", "PhneNb" => "1", "EmailAdr" => "a@a.com"}
+
+      assert {:ok, xml_reconstruido} = Codec.build(@schema, termo)
+      assert xml_reconstruido =~ "<Nm>Fulano</Nm>"
+      assert {:ok, ^termo} = Codec.parse(@schema, xml_reconstruido)
+    end
+
+    test "build também escolhe o ramo pelo maior número de campos batendo" do
+      termo = %{"Nm" => "Fulano", "PhneNb" => "1", "EmailAdr" => "a@a.com"}
+
+      assert {:ok, xml} = Codec.build(@schema, termo)
+      assert xml =~ "<Nm>Fulano</Nm>"
+      refute xml =~ "<FaxNb>"
+    end
+  end
+
   test "simpleContent + atributo (valor com moeda)" do
     schema = %Elemento{
       tag: "E",
