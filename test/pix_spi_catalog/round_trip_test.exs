@@ -6,20 +6,20 @@ defmodule PixSpiCatalog.RoundTripTest do
   idêntico"), porque nada aqui promete preservar espaço em branco ou tag
   vazia vs. `<Tag></Tag>`.
 
-  Os XSDs e os exemplos do catálogo não são redistribuídos (ADR 0009), e
-  portanto não estão neste repositório: este teste lê de um caminho local,
-  fora do controle de versão. Sem esse caminho (ex.: no CI), a suíte inteira
-  é pulada — com aviso, não em silêncio.
+  Os XSDs e os exemplos do catálogo não são redistribuídos aqui: este
+  teste lê de um caminho local, fora do controle de versão, apontado pela
+  variável de ambiente `CATALOGO_SPI_DIR`. Sem essa variável (ex.: no CI),
+  a suíte inteira é pulada — com aviso, não em silêncio.
   """
 
   alias PixSpiCatalog.Registry
 
-  @catalog_path System.get_env("CATALOGO_SPI_DIR") ||
-                  Path.expand("../../../bacex/docs/bacen/catalogo_spi", __DIR__)
+  @catalog_path System.get_env("CATALOGO_SPI_DIR")
 
   @versions ["v5.12.1", "v5.13.1"]
 
-  @catalog_present Enum.any?(@versions, &File.dir?(Path.join(@catalog_path, &1)))
+  @catalog_present @catalog_path != nil and
+                     Enum.any?(@versions, &File.dir?(Path.join(@catalog_path, &1)))
 
   use ExUnit.Case, async: true
 

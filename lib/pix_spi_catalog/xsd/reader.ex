@@ -19,9 +19,16 @@ defmodule PixSpiCatalog.Xsd.Reader do
           definitions: %{String.t() => definition()}
         }
 
+  @doc "Lê e interpreta o `.xsd` no caminho dado. Ver `read_content/1`."
   @spec read(String.t()) :: t()
   def read(path), do: path |> File.read!() |> read_content()
 
+  @doc """
+  Interpreta o conteúdo de um `.xsd` já em memória: namespace alvo, tipo e
+  nome do elemento raiz do schema, e um mapa de todas as definições
+  nomeadas de nível superior (`complexType`/`simpleType`/`group`/`element`),
+  prontas para `PixSpiCatalog.Xsd.Compiler` resolver recursivamente.
+  """
   @spec read_content(String.t()) :: t()
   def read_content(content) do
     {root, _rest} = :xmerl_scan.string(:binary.bin_to_list(content))

@@ -2,10 +2,10 @@ defmodule PixSpiCatalog.Xmldsig.SignatureRoundTripTest do
   use ExUnit.Case, async: true
 
   alias PixSpiCatalog.Xmldsig.{Signer, Verifier}
-  alias PixSpiCatalog.XmldsigTestCA
+  alias PixSpiCatalog.Xmldsig.TestCA
 
   setup do
-    {:ok, XmldsigTestCA.generate()}
+    {:ok, TestCA.generate()}
   end
 
   defp app_hdr_xml do
@@ -95,7 +95,7 @@ defmodule PixSpiCatalog.Xmldsig.SignatureRoundTripTest do
     signature_xml = Signer.sign(app_hdr_xml(), document_xml(), private_key_der, certificate_der)
     envelope = assemble_envelope(app_hdr_xml(), document_xml(), signature_xml)
 
-    other = XmldsigTestCA.generate()
+    other = TestCA.generate()
     assert {:error, :certificate_mismatch} = Verifier.verify(envelope, other.certificate_der)
   end
 

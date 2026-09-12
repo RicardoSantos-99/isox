@@ -11,9 +11,9 @@ defmodule PixSpiCatalog.Generator do
   alias PixSpiCatalog.Schema.Element
 
   @doc """
-  Nome do módulo (`Elixir.PixSpiCatalog.Generated.Pacs008.V1_16`) e o
-  caminho relativo (`pacs008/v1_16.ex`), a partir do nome do arquivo XSD
-  (ex.: `"pacs.008.spi.1.16"`).
+  Nome do módulo (ex.: PixSpiCatalog.Generated.Pacs008.V1_16, como string
+  com o prefixo `Elixir.`) e o caminho relativo (`pacs008/v1_16.ex`), a
+  partir do nome do arquivo XSD (ex.: `"pacs.008.spi.1.16"`).
   """
   @spec names(String.t()) :: {module :: String.t(), path :: String.t()}
   def names(filename_without_extension) do

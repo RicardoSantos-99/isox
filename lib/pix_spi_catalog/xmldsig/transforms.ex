@@ -11,6 +11,7 @@ defmodule PixSpiCatalog.Xmldsig.Transforms do
 
   import PixSpiCatalog.Xmldsig.Xml
 
+  @doc "Devolve `el` sem nenhum `<Signature>` na sua própria árvore (recursivo)."
   @spec enveloped_signature(tuple()) :: tuple()
   def enveloped_signature(el) do
     content =

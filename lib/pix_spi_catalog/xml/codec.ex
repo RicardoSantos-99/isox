@@ -43,7 +43,7 @@ defmodule PixSpiCatalog.Xml.Codec do
   `namespace`, quando dado, vira o `xmlns` da tag raiz — namespace é
   declaração XML, não um `xs:attribute` do schema, então não é modelado
   como atributo comum; sem ele, o XML montado não teria como ser
-  redespachado por `Registry.parse/1`.
+  redespachado por `PixSpiCatalog.Registry.parse/1`.
   """
   @spec build(Element.t(), term(), String.t() | nil) :: {:ok, binary()} | {:error, String.t()}
   def build(%Element{} = schema, term, namespace \\ nil) do

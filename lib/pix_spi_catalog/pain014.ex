@@ -4,9 +4,8 @@ defmodule PixSpiCatalog.Pain014 do
   e 2.4 coexistindo. Correlaciona com a instrução agendada por
   `OrgnlPmtInfId`/`OrgnlEndToEndId`.
 
-  `docs/mensagens.md` (bacex) descreve um caso de fila (`queued`) pra
-  esta mensagem, mas o schema real só define `TxSts` como `ACSP`/`RJCT`
-  — vale corrigir o doc; não implementado aqui por não existir no schema.
+  O schema real só define `TxSts` como `ACSP`/`RJCT` — um eventual estado
+  de fila/pendência não existe neste schema, então não é modelado aqui.
 
   `InitgPty` (14 zeros) e `OrgnlGrpInfAndSts` (`OrgnlMsgId` com 32 zeros,
   `OrgnlMsgNmId` com 8 zeros) são valores fixos no perfil do BCB, não

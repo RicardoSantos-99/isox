@@ -77,6 +77,10 @@ defmodule PixSpiCatalog.Xsd.Compiler do
     end
   end
 
+  @doc """
+  Resolve um `<xs:complexType>` para `Schema.ComplexType`, ou `:opaque`
+  quando o único conteúdo é `xs:any` (o caso do `<Sgntr>`).
+  """
   @spec resolve_complex_type(tuple(), map()) :: ComplexType.t() | :opaque
   def resolve_complex_type(node, definitions) do
     children = Reader.child_elements(node)
@@ -192,6 +196,7 @@ defmodule PixSpiCatalog.Xsd.Compiler do
     %ComplexType{text: resolve_type_by_name(base, definitions), attributes: attributes}
   end
 
+  @doc "Resolve um `<xs:simpleType>` (sempre `restriction`) para `Schema.SimpleType`."
   @spec resolve_simple_type(tuple()) :: SimpleType.t()
   def resolve_simple_type(node) do
     restriction =

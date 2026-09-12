@@ -1,32 +1,34 @@
 defmodule Mix.Tasks.Xmldsig.Spike do
-  @shortdoc "Mede o throughput de assinar/verificar uma pacs.008 (ADR 0007, gate da Fase 4)"
+  @shortdoc "Mede o throughput de assinar/verificar uma pacs.008"
 
   @moduledoc """
-  Spike da ADR 0007 do `bacex` — sem servidor HTTP no caminho, mede:
+  Mede o throughput de assinar e verificar uma pacs.008 realista, sem
+  servidor HTTP no caminho:
 
-    1. montar e assinar uma pacs.008 realista pelo caminho de template
-       canônico (sem canonicalização no caminho quente, ADR 0006)
+    1. montar e assinar uma pacs.008 pelo caminho de template canônico
+       (sem canonicalização no caminho quente — ver `PixSpiCatalog.Xmldsig.Signer`)
     2. parsear e verificar a assinatura de uma pacs.008 de entrada, com
        canonicalização real (não dá pra confiar que os bytes de terceiro
        já chegam canônicos)
     3. canonicalização isolada (o trecho caro e bem delimitado, candidato
-       a NIF/Rustler se o número reprovar — ver ADR 0007)
+       a NIF/Rustler caso o throughput medido não seja suficiente)
 
   Throughput por core: mede sequencial num processo só, sem paralelizar —
   o número é o que um core sustenta; multiplicar por cores disponíveis dá
-  uma estimativa grosseira do total. **Não fixa meta** — a ADR 0007 é
-  explícita: a meta é definida com os números na mesa, não antes.
+  uma estimativa grosseira do total. **Não fixa meta**: o número aceitável
+  depende de onde e como esta lib for usada — cabe a quem integra decidir
+  isso com os números medidos na mão, não a esta biblioteca presumir.
   """
 
   use Mix.Task
 
   alias PixSpiCatalog.Xmldsig.{Canonicalizer, Signer, Verifier}
-  alias PixSpiCatalog.XmldsigTestCA
+  alias PixSpiCatalog.Xmldsig.TestCA
 
   @impl Mix.Task
   def run(_args) do
     %{private_key_der: private_key_der, certificate_der: certificate_der} =
-      XmldsigTestCA.generate()
+      TestCA.generate()
 
     app_hdr = app_hdr_xml()
     document = document_xml()

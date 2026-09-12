@@ -68,12 +68,12 @@ defmodule PixSpiCatalog.Reda022Test do
     assert {:error, _reason} = Reda022.parse(outro_xml)
   end
 
-  @example_path Path.expand(
-                  "../../../bacex/docs/bacen/catalogo_spi/v5.13.1/exemplos/reda022/reda.022_msg.xml",
-                  __DIR__
-                )
+  @example_path (case System.get_env("CATALOGO_SPI_DIR") do
+                   nil -> nil
+                   dir -> Path.join(dir, "v5.13.1/exemplos/reda022/reda.022_msg.xml")
+                 end)
 
-  if File.exists?(@example_path) do
+  if @example_path && File.exists?(@example_path) do
     test "parseia o exemplo oficial real, com os dois ramos ambíguos de CtctDtls" do
       assert {:ok, message, :v1_4} = Reda022.parse(File.read!(@example_path))
 

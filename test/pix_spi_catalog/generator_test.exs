@@ -43,7 +43,11 @@ defmodule PixSpiCatalog.GeneratorTest do
 
   test "head001_source gera um módulo que expõe o tipo dado" do
     type = %PixSpiCatalog.Schema.SimpleType{base: "string"}
-    module = PixSpiCatalog.Generated.TestHead
+    # Module.concat/2, não o alias direto — o módulo só passa a existir
+    # depois do Code.eval_string/1 logo abaixo; um alias literal deixaria o
+    # compilador avisar "função indefinida" sobre um módulo que ele vê (só
+    # nesta análise estática) como gerado dinamicamente.
+    module = Module.concat(PixSpiCatalog.Generated, TestHead)
 
     Code.eval_string(Generator.head001_source(inspect(module), type))
 
@@ -57,7 +61,7 @@ defmodule PixSpiCatalog.GeneratorTest do
     read_result = Reader.read_content(@xsd_message)
     root = Compiler.resolve_root(read_result)
 
-    module = PixSpiCatalog.Generated.TestGenerated
+    module = Module.concat(PixSpiCatalog.Generated, TestGenerated)
 
     source =
       Generator.message_source(inspect(module), root, read_result.namespace, "teste.spi.1.0")
