@@ -17,7 +17,11 @@ defmodule PixSpiCatalog.Xmldsig.Canonicalizer do
   @doc "Parseia e canonicaliza um XML completo, a partir do elemento raiz."
   @spec canonicalize(binary()) :: binary()
   def canonicalize(xml) when is_binary(xml) do
-    {root, _rest} = :xmerl_scan.string(String.to_charlist(xml), quiet: true)
+    # Lista de bytes crus, não de codepoints (String.to_charlist/1) — o
+    # XML declara encoding="UTF-8" e é o próprio xmerl quem decodifica a
+    # partir disso; dar codepoint já decodificado confunde o parser diante
+    # de qualquer caractere fora do ASCII (mesmo bug do Codec genérico).
+    {root, _rest} = :xmerl_scan.string(:binary.bin_to_list(xml), quiet: true)
     canonicalize_element(root)
   end
 

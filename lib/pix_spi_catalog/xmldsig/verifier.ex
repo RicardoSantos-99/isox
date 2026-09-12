@@ -63,7 +63,8 @@ defmodule PixSpiCatalog.Xmldsig.Verifier do
   """
   @spec verify(binary(), binary()) :: :ok | {:error, error()}
   def verify(envelope_xml, expected_certificate_der) do
-    {root, _rest} = :xmerl_scan.string(String.to_charlist(envelope_xml), quiet: true)
+    # Bytes crus, não codepoints — ver Canonicalizer.canonicalize/1.
+    {root, _rest} = :xmerl_scan.string(:binary.bin_to_list(envelope_xml), quiet: true)
 
     with app_hdr when not is_nil(app_hdr) <- child(root, "AppHdr") || :missing_app_hdr,
          document when not is_nil(document) <- child(root, "Document") || :missing_document,

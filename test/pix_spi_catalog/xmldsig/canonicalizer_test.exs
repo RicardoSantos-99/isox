@@ -8,6 +8,18 @@ defmodule PixSpiCatalog.Xmldsig.CanonicalizerTest do
     assert Canonicalizer.canonicalize(xml) == xml
   end
 
+  test "texto fora do ASCII (acento, cedilha) não quebra o parser" do
+    # Regressão: usar String.to_charlist/1 (codepoints já decodificados)
+    # em vez de :binary.bin_to_list/1 (bytes crus) faz o :xmerl_scan
+    # rejeitar qualquer caractere fora do ASCII quando o XML declara
+    # encoding="UTF-8" — quem decodifica a partir dos bytes é o próprio
+    # xmerl, não o Elixir antes de chamar.
+    xml = ~s(<?xml version="1.0" encoding="UTF-8"?><e>não confere, коа çãé</e>)
+
+    assert Canonicalizer.canonicalize(xml) ==
+             ~s(<e>não confere, коа çãé</e>)
+  end
+
   test "redeclaração redundante do mesmo namespace é removida" do
     xml = ~s(<a:Root xmlns:a="urn:a"><a:Child xmlns:a="urn:a">x</a:Child></a:Root>)
 
@@ -75,7 +87,7 @@ defmodule PixSpiCatalog.Xmldsig.CanonicalizerTest do
     xml =
       ~s(<Envelope xmlns="urn:root"><AppHdr Id="hdr1"><Fr>1</Fr></AppHdr></Envelope>)
 
-    {root, _rest} = :xmerl_scan.string(String.to_charlist(xml), quiet: true)
+    {root, _rest} = :xmerl_scan.string(:binary.bin_to_list(xml), quiet: true)
     [app_hdr] = :xmerl_xpath.string(~c"//AppHdr", root)
 
     assert Canonicalizer.canonicalize_element(app_hdr, %{default: "urn:root"}) ==
