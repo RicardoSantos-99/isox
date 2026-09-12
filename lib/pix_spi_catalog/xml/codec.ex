@@ -12,6 +12,10 @@ defmodule PixSpiCatalog.Xml.Codec do
 
   Validação (pattern/enum/tamanho) acontece no `parse`; o `build` confia no
   termo que recebe.
+
+  `compilar_template/3` + `renderizar/2` são a terceira API do ADR 0003:
+  compila um termo com lacunas (`lacuna/1`) uma vez, e cada renderização
+  só preenche as lacunas — sem percorrer o schema de novo.
   """
 
   import PixSpiCatalog.Xml.Registros
@@ -60,6 +64,56 @@ defmodule PixSpiCatalog.Xml.Codec do
       global: false
     )
   end
+
+  # --- template canônico (ADR 0003) ---
+
+  @typedoc "Template compilado: trechos fixos intercalados com lacunas a preencher depois."
+  @type template :: [binary() | {:lacuna, atom()}]
+
+  @doc """
+  Marcador de lacuna: usa no lugar de um valor real, num termo passado para
+  `compilar_template/3`, pra dizer "isso varia, preenche depois".
+  """
+  @spec lacuna(atom()) :: binary()
+  def lacuna(chave) when is_atom(chave), do: <<0>> <> Atom.to_string(chave) <> <<0>>
+
+  @doc """
+  Compila `{schema, termo com lacunas}` num template canônico: monta o XML
+  normalmente (reaproveita `build/3`, mesma árvore, mesma validação de
+  atributo obrigatório) e depois separa os trechos fixos das lacunas — sem
+  percorrer o schema de novo. Pensado pro caminho quente do simulador: o
+  custo de percorrer a árvore é pago uma vez aqui, não a cada mensagem.
+  """
+  @spec compilar_template(Elemento.t(), term(), String.t() | nil) ::
+          {:ok, template()} | {:error, String.t()}
+  def compilar_template(%Elemento{} = schema, termo_com_lacunas, namespace \\ nil) do
+    with {:ok, xml} <- build(schema, termo_com_lacunas, namespace) do
+      {:ok, fatiar_lacunas(xml)}
+    end
+  end
+
+  @doc "Preenche as lacunas de um template já compilado, produzindo o XML final."
+  @spec renderizar(template(), %{atom() => term()}) :: binary()
+  def renderizar(template, campos_variaveis) do
+    Enum.map_join(template, "", fn
+      {:lacuna, chave} -> campos_variaveis |> Map.fetch!(chave) |> to_string() |> escapar_texto()
+      fixo -> fixo
+    end)
+  end
+
+  @lacuna_regex ~r/\x00([a-zA-Z_][a-zA-Z0-9_]*)\x00/
+
+  defp fatiar_lacunas(xml) do
+    @lacuna_regex
+    |> Regex.split(xml, include_captures: true)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.map(&segmento/1)
+  end
+
+  defp segmento(<<0, resto::binary>>),
+    do: {:lacuna, resto |> String.trim_trailing(<<0>>) |> String.to_existing_atom()}
+
+  defp segmento(fixo), do: fixo
 
   # --- extração (parse) ---
 

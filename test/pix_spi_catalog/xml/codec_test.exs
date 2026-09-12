@@ -183,4 +183,44 @@ defmodule PixSpiCatalog.Xml.CodecTest do
     assert {:ok, xml} = Codec.build(schema, termo)
     assert {:ok, ^termo} = Codec.parse(schema, xml)
   end
+
+  describe "template" do
+    @schema %Elemento{
+      tag: "E",
+      tipo: %TipoComplexo{
+        conteudo: [
+          %Elemento{tag: "Fixo", tipo: %TipoSimples{}},
+          %Elemento{tag: "Variavel", tipo: %TipoSimples{}}
+        ]
+      }
+    }
+
+    test "compila com lacunas e renderiza preenchendo só o que varia" do
+      termo = %{"Fixo" => "sempre igual", "Variavel" => Codec.lacuna(:variavel)}
+
+      assert {:ok, template} = Codec.compilar_template(@schema, termo)
+      assert xml1 = Codec.renderizar(template, %{variavel: "um"})
+      assert xml2 = Codec.renderizar(template, %{variavel: "outro"})
+
+      assert {:ok, %{"Fixo" => "sempre igual", "Variavel" => "um"}} = Codec.parse(@schema, xml1)
+
+      assert {:ok, %{"Fixo" => "sempre igual", "Variavel" => "outro"}} =
+               Codec.parse(@schema, xml2)
+    end
+
+    test "sem lacuna nenhuma, o template é só o XML fixo" do
+      termo = %{"Fixo" => "a", "Variavel" => "b"}
+
+      assert {:ok, template} = Codec.compilar_template(@schema, termo)
+      assert Codec.renderizar(template, %{}) == Codec.renderizar(template, %{sobrando: 1})
+    end
+
+    test "escapa o valor da lacuna no momento de renderizar" do
+      termo = %{"Fixo" => "x", "Variavel" => Codec.lacuna(:variavel)}
+      assert {:ok, template} = Codec.compilar_template(@schema, termo)
+
+      xml = Codec.renderizar(template, %{variavel: "Tom & Jerry"})
+      assert {:ok, %{"Variavel" => "Tom & Jerry"}} = Codec.parse(@schema, xml)
+    end
+  end
 end
