@@ -12,54 +12,54 @@ defmodule PixSpiCatalog.RoundTripTest do
   é pulada — com aviso, não em silêncio.
   """
 
-  alias PixSpiCatalog.Registro
+  alias PixSpiCatalog.Registry
 
-  @caminho_catalogo System.get_env("CATALOGO_SPI_DIR") ||
-                      Path.expand("../../../bacex/docs/bacen/catalogo_spi", __DIR__)
+  @catalog_path System.get_env("CATALOGO_SPI_DIR") ||
+                  Path.expand("../../../bacex/docs/bacen/catalogo_spi", __DIR__)
 
-  @versoes ["v5.12.1", "v5.13.1"]
+  @versions ["v5.12.1", "v5.13.1"]
 
-  @catalogo_presente Enum.any?(@versoes, &File.dir?(Path.join(@caminho_catalogo, &1)))
+  @catalog_present Enum.any?(@versions, &File.dir?(Path.join(@catalog_path, &1)))
 
   use ExUnit.Case, async: true
 
-  unless @catalogo_presente do
+  unless @catalog_present do
     @moduletag skip:
-                 "catálogo do SPI não encontrado em #{@caminho_catalogo} (defina CATALOGO_SPI_DIR)"
+                 "catálogo do SPI não encontrado em #{@catalog_path} (defina CATALOGO_SPI_DIR)"
   end
 
   test "parse -> build -> parse é idempotente para todo exemplo oficial do catálogo" do
-    exemplos =
-      for versao <- @versoes,
-          dir = Path.join([@caminho_catalogo, versao, "exemplos"]),
+    examples =
+      for version <- @versions,
+          dir = Path.join([@catalog_path, version, "exemplos"]),
           File.dir?(dir),
-          caminho <- Path.wildcard(Path.join(dir, "**/*.xml")) do
-        {versao, caminho}
+          path <- Path.wildcard(Path.join(dir, "**/*.xml")) do
+        {version, path}
       end
 
-    assert exemplos != [], "nenhum exemplo .xml encontrado sob #{@caminho_catalogo}"
+    assert examples != [], "nenhum exemplo .xml encontrado sob #{@catalog_path}"
 
-    falhas =
-      exemplos
-      |> Enum.map(fn {versao, caminho} -> {versao, caminho, checar(caminho)} end)
-      |> Enum.reject(fn {_versao, _caminho, resultado} -> resultado == :ok end)
+    failures =
+      examples
+      |> Enum.map(fn {version, path} -> {version, path, check(path)} end)
+      |> Enum.reject(fn {_version, _path, result} -> result == :ok end)
 
-    relatorio =
-      Enum.map_join(falhas, "\n", fn {versao, caminho, erro} ->
-        "#{versao} #{Path.relative_to(caminho, @caminho_catalogo)}: #{inspect(erro)}"
+    report =
+      Enum.map_join(failures, "\n", fn {version, path, error} ->
+        "#{version} #{Path.relative_to(path, @catalog_path)}: #{inspect(error)}"
       end)
 
-    assert falhas == [],
-           "#{length(falhas)}/#{length(exemplos)} exemplos falharam no round-trip:\n#{relatorio}"
+    assert failures == [],
+           "#{length(failures)}/#{length(examples)} exemplos falharam no round-trip:\n#{report}"
   end
 
-  defp checar(caminho) do
-    xml = File.read!(caminho)
+  defp check(path) do
+    xml = File.read!(path)
 
-    with {:ok, modulo, termo} <- Registro.parse(xml),
-         {:ok, xml_construido} <- modulo.build(termo),
-         {:ok, _modulo2, termo2} <- Registro.parse(xml_construido) do
-      if termo == termo2, do: :ok, else: {:termo_diferente_apos_rebuild, termo, termo2}
+    with {:ok, module, term} <- Registry.parse(xml),
+         {:ok, built_xml} <- module.build(term),
+         {:ok, _module2, term2} <- Registry.parse(built_xml) do
+      if term == term2, do: :ok, else: {:term_differs_after_rebuild, term, term2}
     end
   end
 end

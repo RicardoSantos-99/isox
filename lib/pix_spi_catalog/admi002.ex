@@ -14,9 +14,9 @@ defmodule PixSpiCatalog.Admi002 do
   """
 
   alias PixSpiCatalog.AppHdr
-  alias PixSpiCatalog.Gerado.Admi002.V1_5
+  alias PixSpiCatalog.Generated.Admi002.V1_5
 
-  @type versao :: :v1_5
+  @type version :: :v1_5
 
   defstruct [:ref, :rjctg_pty_rsn, :rjctn_dt_tm, :err_lctn, :rsn_desc, :addtl_data]
 
@@ -29,65 +29,65 @@ defmodule PixSpiCatalog.Admi002 do
           addtl_data: String.t() | nil
         }
 
-  @campos_obrigatorios [:ref, :rjctg_pty_rsn]
+  @required_fields [:ref, :rjctg_pty_rsn]
 
-  @modulo_por_versao %{v1_5: V1_5}
-  @versao_por_modulo Map.new(@modulo_por_versao, fn {v, m} -> {m, v} end)
+  @module_by_version %{v1_5: V1_5}
+  @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec build(t(), AppHdr.t(), versao()) :: {:ok, binary()} | {:error, String.t()}
-  def build(%__MODULE__{} = mensagem, %AppHdr{} = cabecalho, versao) when versao in [:v1_5] do
-    with :ok <- validar_obrigatorios(mensagem) do
-      modulo = Map.fetch!(@modulo_por_versao, versao)
+  @spec build(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
+  def build(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_5] do
+    with :ok <- validate_required(message) do
+      module = Map.fetch!(@module_by_version, version)
 
-      termo = %{
-        "AppHdr" => AppHdr.termo(cabecalho, modulo.msg_def_idr()),
-        "Document" => termo_document(mensagem)
+      term = %{
+        "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
+        "Document" => document_term(message)
       }
 
-      with {:ok, xml} <- modulo.build(termo) do
-        confirmar(modulo, xml)
+      with {:ok, xml} <- module.build(term) do
+        confirm(module, xml)
       end
     end
   end
 
   @doc "Parseia um XML de admi.002 de volta para a struct."
-  @spec parse(binary()) :: {:ok, t(), versao()} | {:error, term()}
+  @spec parse(binary()) :: {:ok, t(), version()} | {:error, term()}
   def parse(xml) when is_binary(xml) do
-    case PixSpiCatalog.Registro.parse(xml) do
-      {:ok, modulo, termo} ->
-        case Map.fetch(@versao_por_modulo, modulo) do
-          {:ok, versao} -> {:ok, struct_de_termo(termo), versao}
-          :error -> {:error, {:nao_e_admi002, modulo.msg_def_idr()}}
+    case PixSpiCatalog.Registry.parse(xml) do
+      {:ok, module, term} ->
+        case Map.fetch(@version_by_module, module) do
+          {:ok, version} -> {:ok, struct_from_term(term), version}
+          :error -> {:error, {:not_admi002, module.msg_def_idr()}}
         end
 
-      erro ->
-        erro
+      error ->
+        error
     end
   end
 
-  defp confirmar(modulo, xml) do
-    case modulo.parse(xml) do
-      {:ok, _termo} -> {:ok, xml}
-      {:error, motivo} -> {:error, motivo}
+  defp confirm(module, xml) do
+    case module.parse(xml) do
+      {:ok, _term} -> {:ok, xml}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp validar_obrigatorios(mensagem) do
-    faltando = Enum.filter(@campos_obrigatorios, &(Map.get(mensagem, &1) in [nil, ""]))
+  defp validate_required(message) do
+    missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
-    if faltando == [],
+    if missing == [],
       do: :ok,
-      else: {:error, "campos obrigatórios ausentes: #{inspect(faltando)}"}
+      else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp termo_document(m) do
+  defp document_term(m) do
     %{
       "admi.002.001.01" => %{
         "RltdRef" => %{"Ref" => m.ref},
         "Rsn" => %{
           "RjctgPtyRsn" => m.rjctg_pty_rsn,
-          "RjctnDtTm" => formatar_data_hora(m.rjctn_dt_tm),
+          "RjctnDtTm" => format_datetime(m.rjctn_dt_tm),
           "ErrLctn" => m.err_lctn,
           "RsnDesc" => m.rsn_desc,
           "AddtlData" => m.addtl_data
@@ -96,30 +96,30 @@ defmodule PixSpiCatalog.Admi002 do
     }
   end
 
-  defp struct_de_termo(termo) do
-    doc = get_in(termo, ["Document", "admi.002.001.01"])
+  defp struct_from_term(term) do
+    doc = get_in(term, ["Document", "admi.002.001.01"])
     rsn = doc["Rsn"]
 
     %__MODULE__{
       ref: get_in(doc, ["RltdRef", "Ref"]),
       rjctg_pty_rsn: rsn["RjctgPtyRsn"],
-      rjctn_dt_tm: parse_data_hora(rsn["RjctnDtTm"]),
+      rjctn_dt_tm: parse_datetime(rsn["RjctnDtTm"]),
       err_lctn: rsn["ErrLctn"],
       rsn_desc: rsn["RsnDesc"],
       addtl_data: rsn["AddtlData"]
     }
   end
 
-  defp formatar_data_hora(nil), do: nil
+  defp format_datetime(nil), do: nil
 
-  defp formatar_data_hora(%DateTime{} = dt) do
+  defp format_datetime(%DateTime{} = dt) do
     dt |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
   end
 
-  defp parse_data_hora(nil), do: nil
+  defp parse_datetime(nil), do: nil
 
-  defp parse_data_hora(texto) do
-    {:ok, dt, _offset} = DateTime.from_iso8601(texto)
+  defp parse_datetime(text) do
+    {:ok, dt, _offset} = DateTime.from_iso8601(text)
     dt
   end
 end

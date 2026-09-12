@@ -5,16 +5,16 @@ defmodule PixSpiCatalog.Camt029Test do
 
   @agora DateTime.utc_now() |> DateTime.truncate(:millisecond)
 
-  @cabecalho %AppHdr{
-    ispb_origem: "22222222",
-    ispb_destino: "11111111",
+  @header %AppHdr{
+    from_ispb: "22222222",
+    to_ispb: "11111111",
     biz_msg_idr: "M123456780123456789abcdefghijklm",
-    criado_em: @agora
+    created_at: @agora
   }
 
-  @mensagem %Camt029{
+  @message %Camt029{
     assgnmt_id: "M123456780123456789abcdefghijklm",
-    criado_em: @agora,
+    created_at: @agora,
     assgnr_ispb: "22222222",
     assgne_ispb: "11111111",
     orgnl_pmt_inf_cxl_id: "CA1234567820260912abcdefghijk",
@@ -25,25 +25,25 @@ defmodule PixSpiCatalog.Camt029Test do
     prcg_dt_tm: @agora
   }
 
-  test "aceite, sem motivo, monta e volta pra struct" do
-    assert {:ok, xml} = Camt029.build(@mensagem, @cabecalho, :v1_1)
+  test "aceite, sem reason, monta e volta pra struct" do
+    assert {:ok, xml} = Camt029.build(@message, @header, :v1_1)
     assert {:ok, de_volta, :v1_1} = Camt029.parse(xml)
-    assert de_volta == @mensagem
+    assert de_volta == @message
     refute xml =~ "CxlStsRsnInf"
   end
 
-  test "rejeição com motivo" do
-    mensagem = %{@mensagem | pmt_inf_cxl_sts: "RJCR", rsn_prtry: "CH16"}
+  test "rejeição com reason" do
+    message = %{@message | pmt_inf_cxl_sts: "RJCR", rsn_prtry: "CH16"}
 
-    assert {:ok, xml} = Camt029.build(mensagem, @cabecalho, :v1_2)
+    assert {:ok, xml} = Camt029.build(message, @header, :v1_2)
     assert {:ok, de_volta, :v1_2} = Camt029.parse(xml)
     assert de_volta.rsn_prtry == "CH16"
   end
 
   test "campo obrigatório ausente é rejeitado antes de montar XML" do
-    mensagem = %{@mensagem | orgnl_pmt_inf_cxl_id: nil}
-    assert {:error, motivo} = Camt029.build(mensagem, @cabecalho, :v1_1)
-    assert motivo =~ "orgnl_pmt_inf_cxl_id"
+    message = %{@message | orgnl_pmt_inf_cxl_id: nil}
+    assert {:error, reason} = Camt029.build(message, @header, :v1_1)
+    assert reason =~ "orgnl_pmt_inf_cxl_id"
   end
 
   test "parse rejeita XML de outra mensagem" do
@@ -52,6 +52,6 @@ defmodule PixSpiCatalog.Camt029Test do
     <Envelope xmlns="https://www.bcb.gov.br/pi/camt.029/1.2"><Nada/></Envelope>
     """
 
-    assert {:error, _motivo} = Camt029.parse(outro_xml)
+    assert {:error, _reason} = Camt029.parse(outro_xml)
   end
 end

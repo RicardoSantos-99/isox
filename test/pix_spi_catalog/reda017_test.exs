@@ -5,25 +5,25 @@ defmodule PixSpiCatalog.Reda017Test do
 
   @agora DateTime.utc_now() |> DateTime.truncate(:millisecond)
 
-  @cabecalho %AppHdr{
-    ispb_origem: "00000000",
-    ispb_destino: "11111111",
+  @header %AppHdr{
+    from_ispb: "00000000",
+    to_ispb: "11111111",
     biz_msg_idr: "M123456780123456789abcdefghijklm",
-    criado_em: @agora
+    created_at: @agora
   }
 
   test "monta e volta pra struct" do
-    mensagem = %Reda017{
+    message = %Reda017{
       msg_id: "M123456780123456789abcdefghijklm",
-      criado_em: @agora,
+      created_at: @agora,
       ispb: "11111111",
-      prazo_confi: @agora
+      confirmation_deadline: @agora
     }
 
-    assert {:ok, xml} = Reda017.build(mensagem, @cabecalho, :v1_2)
+    assert {:ok, xml} = Reda017.build(message, @header, :v1_2)
     assert {:ok, de_volta, :v1_2} = Reda017.parse(xml)
     assert de_volta.ispb == "11111111"
-    assert de_volta.prazo_confi == @agora
+    assert de_volta.confirmation_deadline == @agora
     assert xml =~ "<Nm>PRAZOCONFI</Nm>"
   end
 
@@ -33,6 +33,6 @@ defmodule PixSpiCatalog.Reda017Test do
     <Envelope xmlns="https://www.bcb.gov.br/pi/reda.017/1.2"><Nada/></Envelope>
     """
 
-    assert {:error, _motivo} = Reda017.parse(outro_xml)
+    assert {:error, _reason} = Reda017.parse(outro_xml)
   end
 end

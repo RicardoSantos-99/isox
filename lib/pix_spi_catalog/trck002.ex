@@ -11,137 +11,137 @@ defmodule PixSpiCatalog.Trck002 do
   """
 
   alias PixSpiCatalog.AppHdr
-  alias PixSpiCatalog.Gerado.Trck002.V1_1
+  alias PixSpiCatalog.Generated.Trck002.V1_1
 
-  @type versao :: :v1_1
+  @type version :: :v1_1
 
   defstruct [
     :msg_id,
-    :criado_em,
+    :created_at,
     :end_to_end_id,
     :instr_id,
     :lcl_instrm,
     :pmt_scnro_prtry,
-    :valor,
+    :value,
     :reqd_exctn_dt,
     :dbtr_cpf_cnpj,
-    :dbtr_conta_id,
-    :dbtr_conta_issr,
-    :dbtr_conta_tipo,
+    :dbtr_acct_id,
+    :dbtr_acct_issr,
+    :dbtr_acct_type,
     :dbtr_agt_ispb,
     :cdtr_agt_ispb,
     :cdtr_cpf_cnpj,
-    :cdtr_conta_id,
-    :cdtr_conta_issr,
-    :cdtr_conta_tipo,
-    :cdtr_conta_chave
+    :cdtr_acct_id,
+    :cdtr_acct_issr,
+    :cdtr_acct_type,
+    :cdtr_acct_proxy
   ]
 
   @type t :: %__MODULE__{}
 
-  @campos_obrigatorios [
+  @required_fields [
     :msg_id,
-    :criado_em,
+    :created_at,
     :end_to_end_id,
     :lcl_instrm,
     :pmt_scnro_prtry,
-    :valor,
+    :value,
     :reqd_exctn_dt,
     :dbtr_cpf_cnpj,
-    :dbtr_conta_id,
-    :dbtr_conta_tipo,
+    :dbtr_acct_id,
+    :dbtr_acct_type,
     :dbtr_agt_ispb,
     :cdtr_agt_ispb,
     :cdtr_cpf_cnpj,
-    :cdtr_conta_id,
-    :cdtr_conta_tipo
+    :cdtr_acct_id,
+    :cdtr_acct_type
   ]
 
-  @modulo_por_versao %{v1_1: V1_1}
-  @versao_por_modulo Map.new(@modulo_por_versao, fn {v, m} -> {m, v} end)
+  @module_by_version %{v1_1: V1_1}
+  @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec build(t(), AppHdr.t(), versao()) :: {:ok, binary()} | {:error, String.t()}
-  def build(%__MODULE__{} = mensagem, %AppHdr{} = cabecalho, versao) when versao in [:v1_1] do
-    with :ok <- validar_obrigatorios(mensagem) do
-      modulo = Map.fetch!(@modulo_por_versao, versao)
+  @spec build(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
+  def build(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_1] do
+    with :ok <- validate_required(message) do
+      module = Map.fetch!(@module_by_version, version)
 
-      termo = %{
-        "AppHdr" => AppHdr.termo(cabecalho, modulo.msg_def_idr()),
-        "Document" => termo_document(mensagem)
+      term = %{
+        "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
+        "Document" => document_term(message)
       }
 
-      with {:ok, xml} <- modulo.build(termo) do
-        confirmar(modulo, xml)
+      with {:ok, xml} <- module.build(term) do
+        confirm(module, xml)
       end
     end
   end
 
   @doc "Parseia um XML de trck.002 de volta para a struct."
-  @spec parse(binary()) :: {:ok, t(), versao()} | {:error, term()}
+  @spec parse(binary()) :: {:ok, t(), version()} | {:error, term()}
   def parse(xml) when is_binary(xml) do
-    case PixSpiCatalog.Registro.parse(xml) do
-      {:ok, modulo, termo} ->
-        case Map.fetch(@versao_por_modulo, modulo) do
-          {:ok, versao} -> {:ok, struct_de_termo(termo), versao}
-          :error -> {:error, {:nao_e_trck002, modulo.msg_def_idr()}}
+    case PixSpiCatalog.Registry.parse(xml) do
+      {:ok, module, term} ->
+        case Map.fetch(@version_by_module, module) do
+          {:ok, version} -> {:ok, struct_from_term(term), version}
+          :error -> {:error, {:not_trck002, module.msg_def_idr()}}
         end
 
-      erro ->
-        erro
+      error ->
+        error
     end
   end
 
-  defp confirmar(modulo, xml) do
-    case modulo.parse(xml) do
-      {:ok, _termo} -> {:ok, xml}
-      {:error, motivo} -> {:error, motivo}
+  defp confirm(module, xml) do
+    case module.parse(xml) do
+      {:ok, _term} -> {:ok, xml}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp validar_obrigatorios(mensagem) do
-    faltando = Enum.filter(@campos_obrigatorios, &(Map.get(mensagem, &1) in [nil, ""]))
+  defp validate_required(message) do
+    missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
-    if faltando == [],
+    if missing == [],
       do: :ok,
-      else: {:error, "campos obrigatórios ausentes: #{inspect(faltando)}"}
+      else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp termo_document(m) do
+  defp document_term(m) do
     %{
       "PmtStsTrckrRpt" => %{
-        "GrpHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => formatar_data_hora(m.criado_em)},
-        "TrckrStsAndTx" => %{"TxSts" => %{"Sts" => "ACCC"}, "Tx" => [termo_tx(m)]}
+        "GrpHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => format_datetime(m.created_at)},
+        "TrckrStsAndTx" => %{"TxSts" => %{"Sts" => "ACCC"}, "Tx" => [tx_term(m)]}
       }
     }
   end
 
-  defp termo_tx(m) do
+  defp tx_term(m) do
     %{
       "PmtId" => %{"InstrId" => m.instr_id, "EndToEndId" => m.end_to_end_id},
       "PmtTpInf" => %{"LclInstrm" => %{"Prtry" => m.lcl_instrm}},
       "PmtScnro" => %{"Prtry" => m.pmt_scnro_prtry},
-      "IntrBkSttlmAmt" => %{valor: to_string(m.valor), atributos: %{"Ccy" => "BRL"}},
-      "ReqdExctnDt" => %{"DtTm" => formatar_data_hora(m.reqd_exctn_dt)},
+      "IntrBkSttlmAmt" => %{value: to_string(m.value), attributes: %{"Ccy" => "BRL"}},
+      "ReqdExctnDt" => %{"DtTm" => format_datetime(m.reqd_exctn_dt)},
       "Dbtr" => %{"Pty" => %{"Id" => %{"PrvtId" => %{"Othr" => %{"Id" => m.dbtr_cpf_cnpj}}}}},
-      "DbtrAcct" => conta_termo(m.dbtr_conta_id, m.dbtr_conta_issr, m.dbtr_conta_tipo),
-      "DbtrAgt" => agente_termo(m.dbtr_agt_ispb),
-      "CdtrAgt" => agente_termo(m.cdtr_agt_ispb),
+      "DbtrAcct" => account_term(m.dbtr_acct_id, m.dbtr_acct_issr, m.dbtr_acct_type),
+      "DbtrAgt" => agent_term(m.dbtr_agt_ispb),
+      "CdtrAgt" => agent_term(m.cdtr_agt_ispb),
       "Cdtr" => %{"Pty" => %{"Id" => %{"PrvtId" => %{"Othr" => %{"Id" => m.cdtr_cpf_cnpj}}}}},
       "CdtrAcct" =>
-        conta_termo(m.cdtr_conta_id, m.cdtr_conta_issr, m.cdtr_conta_tipo, m.cdtr_conta_chave)
+        account_term(m.cdtr_acct_id, m.cdtr_acct_issr, m.cdtr_acct_type, m.cdtr_acct_proxy)
     }
   end
 
-  defp conta_termo(id, issr, tipo, chave \\ nil) do
-    base = %{"Id" => %{"Othr" => %{"Id" => id, "Issr" => issr}}, "Tp" => %{"Cd" => tipo}}
-    if chave, do: Map.put(base, "Prxy", %{"Id" => chave}), else: base
+  defp account_term(id, issr, type, proxy \\ nil) do
+    base = %{"Id" => %{"Othr" => %{"Id" => id, "Issr" => issr}}, "Tp" => %{"Cd" => type}}
+    if proxy, do: Map.put(base, "Prxy", %{"Id" => proxy}), else: base
   end
 
-  defp agente_termo(ispb), do: %{"FinInstnId" => %{"ClrSysMmbId" => %{"MmbId" => ispb}}}
+  defp agent_term(ispb), do: %{"FinInstnId" => %{"ClrSysMmbId" => %{"MmbId" => ispb}}}
 
-  defp struct_de_termo(termo) do
-    doc = get_in(termo, ["Document", "PmtStsTrckrRpt"])
+  defp struct_from_term(term) do
+    doc = get_in(term, ["Document", "PmtStsTrckrRpt"])
     grp = doc["GrpHdr"]
     [tx] = get_in(doc, ["TrckrStsAndTx", "Tx"])
     dbtr_acct = tx["DbtrAcct"]
@@ -149,35 +149,35 @@ defmodule PixSpiCatalog.Trck002 do
 
     %__MODULE__{
       msg_id: grp["MsgId"],
-      criado_em: parse_data_hora(grp["CreDtTm"]),
+      created_at: parse_datetime(grp["CreDtTm"]),
       end_to_end_id: get_in(tx, ["PmtId", "EndToEndId"]),
       instr_id: get_in(tx, ["PmtId", "InstrId"]),
       lcl_instrm: get_in(tx, ["PmtTpInf", "LclInstrm", "Prtry"]),
       pmt_scnro_prtry: get_in(tx, ["PmtScnro", "Prtry"]),
-      valor: get_in(tx, ["IntrBkSttlmAmt", :valor]),
-      reqd_exctn_dt: get_in(tx, ["ReqdExctnDt", "DtTm"]) |> parse_data_hora(),
+      value: get_in(tx, ["IntrBkSttlmAmt", :value]),
+      reqd_exctn_dt: get_in(tx, ["ReqdExctnDt", "DtTm"]) |> parse_datetime(),
       dbtr_cpf_cnpj: get_in(tx, ["Dbtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
-      dbtr_conta_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
-      dbtr_conta_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
-      dbtr_conta_tipo: get_in(dbtr_acct, ["Tp", "Cd"]),
+      dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
+      dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
+      dbtr_acct_type: get_in(dbtr_acct, ["Tp", "Cd"]),
       dbtr_agt_ispb: get_in(tx, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
       cdtr_agt_ispb: get_in(tx, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
       cdtr_cpf_cnpj: get_in(tx, ["Cdtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
-      cdtr_conta_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
-      cdtr_conta_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
-      cdtr_conta_tipo: get_in(cdtr_acct, ["Tp", "Cd"]),
-      cdtr_conta_chave: get_in(cdtr_acct, ["Prxy", "Id"])
+      cdtr_acct_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
+      cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
+      cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
+      cdtr_acct_proxy: get_in(cdtr_acct, ["Prxy", "Id"])
     }
   end
 
-  defp formatar_data_hora(%DateTime{} = dt) do
+  defp format_datetime(%DateTime{} = dt) do
     dt |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
   end
 
-  defp parse_data_hora(nil), do: nil
+  defp parse_datetime(nil), do: nil
 
-  defp parse_data_hora(texto) do
-    {:ok, dt, _offset} = DateTime.from_iso8601(texto)
+  defp parse_datetime(text) do
+    {:ok, dt, _offset} = DateTime.from_iso8601(text)
     dt
   end
 end

@@ -9,47 +9,47 @@ defmodule PixSpiCatalog.AppHdr do
   (ADR 0003, ADR 0006), ainda não implementada.
   """
 
-  defstruct [:ispb_origem, :ispb_destino, :biz_msg_idr, :criado_em]
+  defstruct [:from_ispb, :to_ispb, :biz_msg_idr, :created_at]
 
   @type t :: %__MODULE__{
-          ispb_origem: String.t(),
-          ispb_destino: String.t(),
+          from_ispb: String.t(),
+          to_ispb: String.t(),
           biz_msg_idr: String.t(),
-          criado_em: DateTime.t()
+          created_at: DateTime.t()
         }
 
-  @doc "Termo genérico do `AppHdr`, para compor com o `Document` de uma mensagem."
-  @spec termo(t(), String.t()) :: map()
-  def termo(%__MODULE__{} = cabecalho, msg_def_idr) do
+  @doc "Termo genérico do `AppHdr`, para compor com o `Document` de uma message."
+  @spec term(t(), String.t()) :: map()
+  def term(%__MODULE__{} = header, msg_def_idr) do
     %{
-      "Fr" => %{"FIId" => %{"FinInstnId" => %{"Othr" => %{"Id" => cabecalho.ispb_origem}}}},
-      "To" => %{"FIId" => %{"FinInstnId" => %{"Othr" => %{"Id" => cabecalho.ispb_destino}}}},
-      "BizMsgIdr" => cabecalho.biz_msg_idr,
+      "Fr" => %{"FIId" => %{"FinInstnId" => %{"Othr" => %{"Id" => header.from_ispb}}}},
+      "To" => %{"FIId" => %{"FinInstnId" => %{"Othr" => %{"Id" => header.to_ispb}}}},
+      "BizMsgIdr" => header.biz_msg_idr,
       "MsgDefIdr" => msg_def_idr,
-      "CreDt" => formatar_data_hora(cabecalho.criado_em),
+      "CreDt" => format_datetime(header.created_at),
       "Sgntr" => ""
     }
   end
 
-  @doc "Struct a partir do termo genérico já parseado."
-  @spec de_termo(map()) :: t()
-  def de_termo(termo) do
+  @doc "Struct a partir do term genérico já parseado."
+  @spec from_term(map()) :: t()
+  def from_term(term) do
     %__MODULE__{
-      ispb_origem: get_in(termo, ["Fr", "FIId", "FinInstnId", "Othr", "Id"]),
-      ispb_destino: get_in(termo, ["To", "FIId", "FinInstnId", "Othr", "Id"]),
-      biz_msg_idr: termo["BizMsgIdr"],
-      criado_em: parse_data_hora(termo["CreDt"])
+      from_ispb: get_in(term, ["Fr", "FIId", "FinInstnId", "Othr", "Id"]),
+      to_ispb: get_in(term, ["To", "FIId", "FinInstnId", "Othr", "Id"]),
+      biz_msg_idr: term["BizMsgIdr"],
+      created_at: parse_datetime(term["CreDt"])
     }
   end
 
-  defp formatar_data_hora(%DateTime{} = dt) do
+  defp format_datetime(%DateTime{} = dt) do
     dt |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
   end
 
-  defp parse_data_hora(nil), do: nil
+  defp parse_datetime(nil), do: nil
 
-  defp parse_data_hora(texto) do
-    {:ok, dt, _offset} = DateTime.from_iso8601(texto)
+  defp parse_datetime(text) do
+    {:ok, dt, _offset} = DateTime.from_iso8601(text)
     dt
   end
 end

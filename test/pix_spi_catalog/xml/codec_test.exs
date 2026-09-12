@@ -1,56 +1,56 @@
 defmodule PixSpiCatalog.Xml.CodecTest do
   use ExUnit.Case, async: true
 
-  alias PixSpiCatalog.Schema.{Atributo, Elemento, Escolha, TipoComplexo, TipoSimples}
+  alias PixSpiCatalog.Schema.{Attribute, Choice, ComplexType, Element, SimpleType}
   alias PixSpiCatalog.Xml.Codec
 
   test "parse e build de um elemento simples aninhado" do
-    schema = %Elemento{
+    schema = %Element{
       tag: "Envelope",
-      tipo: %TipoComplexo{conteudo: [%Elemento{tag: "Nome", tipo: %TipoSimples{}}]}
+      type: %ComplexType{content: [%Element{tag: "Name", type: %SimpleType{}}]}
     }
 
-    assert {:ok, termo} = Codec.parse(schema, "<Envelope><Nome>Fulano</Nome></Envelope>")
-    assert termo == %{"Nome" => "Fulano"}
+    assert {:ok, term} = Codec.parse(schema, "<Envelope><Name>Fulano</Name></Envelope>")
+    assert term == %{"Name" => "Fulano"}
 
-    assert {:ok, xml} = Codec.build(schema, termo)
+    assert {:ok, xml} = Codec.build(schema, term)
     assert xml =~ ~s(<?xml version="1.0" encoding="UTF-8"?>)
-    assert {:ok, ^termo} = Codec.parse(schema, xml)
+    assert {:ok, ^term} = Codec.parse(schema, xml)
   end
 
   test "elemento opcional ausente não aparece no termo, e build tolera a ausência" do
-    schema = %Elemento{
+    schema = %Element{
       tag: "E",
-      tipo: %TipoComplexo{
-        conteudo: [
-          %Elemento{tag: "Obrigatorio", tipo: %TipoSimples{}},
-          %Elemento{tag: "Opcional", tipo: %TipoSimples{}, min: 0}
+      type: %ComplexType{
+        content: [
+          %Element{tag: "Required", type: %SimpleType{}},
+          %Element{tag: "Optional", type: %SimpleType{}, min: 0}
         ]
       }
     }
 
-    assert {:ok, %{"Obrigatorio" => "x"}} =
-             Codec.parse(schema, "<E><Obrigatorio>x</Obrigatorio></E>")
+    assert {:ok, %{"Required" => "x"}} =
+             Codec.parse(schema, "<E><Required>x</Required></E>")
 
-    assert {:ok, xml} = Codec.build(schema, %{"Obrigatorio" => "x"})
-    refute xml =~ "Opcional"
+    assert {:ok, xml} = Codec.build(schema, %{"Required" => "x"})
+    refute xml =~ "Optional"
   end
 
   test "elemento obrigatório ausente é erro" do
-    schema = %Elemento{
+    schema = %Element{
       tag: "E",
-      tipo: %TipoComplexo{conteudo: [%Elemento{tag: "X", tipo: %TipoSimples{}}]}
+      type: %ComplexType{content: [%Element{tag: "X", type: %SimpleType{}}]}
     }
 
-    assert {:error, mensagem} = Codec.parse(schema, "<E></E>")
-    assert mensagem =~ "X"
+    assert {:error, message} = Codec.parse(schema, "<E></E>")
+    assert message =~ "X"
   end
 
   test "elemento repetido (maxOccurs ilimitado) vira lista, na ordem" do
-    schema = %Elemento{
+    schema = %Element{
       tag: "E",
-      tipo: %TipoComplexo{
-        conteudo: [%Elemento{tag: "Item", tipo: %TipoSimples{}, max: :ilimitado}]
+      type: %ComplexType{
+        content: [%Element{tag: "Item", type: %SimpleType{}, max: :unbounded}]
       }
     }
 
@@ -62,14 +62,14 @@ defmodule PixSpiCatalog.Xml.CodecTest do
   end
 
   test "choice: usa a opção presente, ignora as demais" do
-    schema = %Elemento{
+    schema = %Element{
       tag: "E",
-      tipo: %TipoComplexo{
-        conteudo: [
-          %Escolha{
-            opcoes: [
-              %Elemento{tag: "A", tipo: %TipoSimples{}},
-              %Elemento{tag: "B", tipo: %TipoSimples{}}
+      type: %ComplexType{
+        content: [
+          %Choice{
+            options: [
+              %Element{tag: "A", type: %SimpleType{}},
+              %Element{tag: "B", type: %SimpleType{}}
             ]
           }
         ]
@@ -85,21 +85,21 @@ defmodule PixSpiCatalog.Xml.CodecTest do
   describe "choice com xs:group ref= (opção = grupo de vários elementos)" do
     # Mesmo formato do reda.022 real (ReqdModContatoChoice): duas opções de
     # grupo com tags em comum — só um campo distingue qual ramo é.
-    @schema %Elemento{
+    @schema %Element{
       tag: "CtctDtls",
-      tipo: %TipoComplexo{
-        conteudo: [
-          %Escolha{
-            opcoes: [
+      type: %ComplexType{
+        content: [
+          %Choice{
+            options: [
               [
-                %Elemento{tag: "PhneNb", tipo: %TipoSimples{}},
-                %Elemento{tag: "FaxNb", tipo: %TipoSimples{}, min: 0},
-                %Elemento{tag: "EmailAdr", tipo: %TipoSimples{}}
+                %Element{tag: "PhneNb", type: %SimpleType{}},
+                %Element{tag: "FaxNb", type: %SimpleType{}, min: 0},
+                %Element{tag: "EmailAdr", type: %SimpleType{}}
               ],
               [
-                %Elemento{tag: "Nm", tipo: %TipoSimples{}},
-                %Elemento{tag: "PhneNb", tipo: %TipoSimples{}},
-                %Elemento{tag: "EmailAdr", tipo: %TipoSimples{}}
+                %Element{tag: "Nm", type: %SimpleType{}},
+                %Element{tag: "PhneNb", type: %SimpleType{}},
+                %Element{tag: "EmailAdr", type: %SimpleType{}}
               ]
             ]
           }
@@ -110,89 +110,89 @@ defmodule PixSpiCatalog.Xml.CodecTest do
     test "ramo sem o campo distintivo: todos os campos do grupo saem no parse" do
       xml = "<CtctDtls><PhneNb>1</PhneNb><FaxNb>2</FaxNb><EmailAdr>a@a.com</EmailAdr></CtctDtls>"
 
-      assert {:ok, termo} = Codec.parse(@schema, xml)
-      assert termo == %{"PhneNb" => "1", "FaxNb" => "2", "EmailAdr" => "a@a.com"}
+      assert {:ok, term} = Codec.parse(@schema, xml)
+      assert term == %{"PhneNb" => "1", "FaxNb" => "2", "EmailAdr" => "a@a.com"}
     end
 
     test "ramos com tags em comum: o campo distintivo (Nm) escolhe o ramo certo, não se perde" do
       xml = "<CtctDtls><Nm>Fulano</Nm><PhneNb>1</PhneNb><EmailAdr>a@a.com</EmailAdr></CtctDtls>"
 
-      assert {:ok, termo} = Codec.parse(@schema, xml)
-      assert termo == %{"Nm" => "Fulano", "PhneNb" => "1", "EmailAdr" => "a@a.com"}
+      assert {:ok, term} = Codec.parse(@schema, xml)
+      assert term == %{"Nm" => "Fulano", "PhneNb" => "1", "EmailAdr" => "a@a.com"}
 
-      assert {:ok, xml_reconstruido} = Codec.build(@schema, termo)
-      assert xml_reconstruido =~ "<Nm>Fulano</Nm>"
-      assert {:ok, ^termo} = Codec.parse(@schema, xml_reconstruido)
+      assert {:ok, rebuilt_xml} = Codec.build(@schema, term)
+      assert rebuilt_xml =~ "<Nm>Fulano</Nm>"
+      assert {:ok, ^term} = Codec.parse(@schema, rebuilt_xml)
     end
 
     test "build também escolhe o ramo pelo maior número de campos batendo" do
-      termo = %{"Nm" => "Fulano", "PhneNb" => "1", "EmailAdr" => "a@a.com"}
+      term = %{"Nm" => "Fulano", "PhneNb" => "1", "EmailAdr" => "a@a.com"}
 
-      assert {:ok, xml} = Codec.build(@schema, termo)
+      assert {:ok, xml} = Codec.build(@schema, term)
       assert xml =~ "<Nm>Fulano</Nm>"
       refute xml =~ "<FaxNb>"
     end
   end
 
   test "simpleContent + atributo (valor com moeda)" do
-    schema = %Elemento{
+    schema = %Element{
       tag: "E",
-      tipo: %TipoComplexo{
-        conteudo: [
-          %Elemento{
+      type: %ComplexType{
+        content: [
+          %Element{
             tag: "Valor",
-            tipo: %TipoComplexo{
-              texto: %TipoSimples{base: "decimal"},
-              atributos: [%Atributo{tag: "Ccy", tipo: %TipoSimples{}}]
+            type: %ComplexType{
+              text: %SimpleType{base: "decimal"},
+              attributes: [%Attribute{tag: "Ccy", type: %SimpleType{}}]
             }
           }
         ]
       }
     }
 
-    assert {:ok, termo} = Codec.parse(schema, ~s(<E><Valor Ccy="BRL">1000.00</Valor></E>))
-    assert termo == %{"Valor" => %{valor: "1000.00", atributos: %{"Ccy" => "BRL"}}}
+    assert {:ok, term} = Codec.parse(schema, ~s(<E><Valor Ccy="BRL">1000.00</Valor></E>))
+    assert term == %{"Valor" => %{value: "1000.00", attributes: %{"Ccy" => "BRL"}}}
 
-    assert {:ok, xml} = Codec.build(schema, termo)
+    assert {:ok, xml} = Codec.build(schema, term)
     assert xml =~ ~s(Ccy="BRL")
     assert xml =~ "1000.00"
-    assert {:ok, ^termo} = Codec.parse(schema, xml)
+    assert {:ok, ^term} = Codec.parse(schema, xml)
   end
 
   test "opaco (Sgntr) captura o XML interno sem interpretar, vazio ou não" do
-    schema = %Elemento{
+    schema = %Element{
       tag: "E",
-      tipo: %TipoComplexo{conteudo: [%Elemento{tag: "Sgntr", tipo: :opaco}]}
+      type: %ComplexType{content: [%Element{tag: "Sgntr", type: :opaque}]}
     }
 
     assert {:ok, %{"Sgntr" => ""}} = Codec.parse(schema, "<E><Sgntr/></E>")
 
-    assert {:ok, %{"Sgntr" => interno}} =
+    assert {:ok, %{"Sgntr" => inner}} =
              Codec.parse(schema, "<E><Sgntr><ds:Signature>xyz</ds:Signature></Sgntr></E>")
 
-    assert interno =~ "xyz"
-    assert {:ok, xml} = Codec.build(schema, %{"Sgntr" => interno})
-    assert {:ok, %{"Sgntr" => ^interno}} = Codec.parse(schema, xml)
+    assert inner =~ "xyz"
+    assert {:ok, xml} = Codec.build(schema, %{"Sgntr" => inner})
+    assert {:ok, %{"Sgntr" => ^inner}} = Codec.parse(schema, xml)
   end
 
   test "validação: pattern" do
-    schema = %Elemento{
+    schema = %Element{
       tag: "E",
-      tipo: %TipoComplexo{
-        conteudo: [%Elemento{tag: "Cod", tipo: %TipoSimples{pattern: "[A-Z]{4}"}}]
+      type: %ComplexType{
+        content: [%Element{tag: "Cod", type: %SimpleType{pattern: "[A-Z]{4}"}}]
       }
     }
 
     assert {:ok, _} = Codec.parse(schema, "<E><Cod>ACCC</Cod></E>")
-    assert {:error, mensagem} = Codec.parse(schema, "<E><Cod>abcd</Cod></E>")
-    assert mensagem =~ "padrão"
+    assert {:error, message} = Codec.parse(schema, "<E><Cod>abcd</Cod></E>")
+    assert message =~ "padrão"
   end
 
   test "validação: pattern casa o valor inteiro, não uma substring no meio" do
-    schema = %Elemento{
+    schema = %Element{
       tag: "E",
-      tipo: %TipoComplexo{
-        conteudo: [%Elemento{tag: "Cod", tipo: %TipoSimples{pattern: "[A-Z]{4}"}}]
+      type: %ComplexType{
+        content: [%Element{tag: "Cod", type: %SimpleType{pattern: "[A-Z]{4}"}}]
       }
     }
 
@@ -200,10 +200,10 @@ defmodule PixSpiCatalog.Xml.CodecTest do
   end
 
   test "validação: enum" do
-    schema = %Elemento{
+    schema = %Element{
       tag: "E",
-      tipo: %TipoComplexo{
-        conteudo: [%Elemento{tag: "Sts", tipo: %TipoSimples{enum: ["ACCC", "RJCT"]}}]
+      type: %ComplexType{
+        content: [%Element{tag: "Sts", type: %SimpleType{enum: ["ACCC", "RJCT"]}}]
       }
     }
 
@@ -212,10 +212,10 @@ defmodule PixSpiCatalog.Xml.CodecTest do
   end
 
   test "validação: max_length e min_length" do
-    schema = %Elemento{
+    schema = %Element{
       tag: "E",
-      tipo: %TipoComplexo{
-        conteudo: [%Elemento{tag: "X", tipo: %TipoSimples{max_length: 3, min_length: 2}}]
+      type: %ComplexType{
+        content: [%Element{tag: "X", type: %SimpleType{max_length: 3, min_length: 2}}]
       }
     }
 
@@ -225,54 +225,54 @@ defmodule PixSpiCatalog.Xml.CodecTest do
   end
 
   test "escapa e desescapa caracteres especiais em texto e atributo" do
-    schema = %Elemento{
+    schema = %Element{
       tag: "E",
-      tipo: %TipoComplexo{conteudo: [%Elemento{tag: "Nome", tipo: %TipoSimples{}}]}
+      type: %ComplexType{content: [%Element{tag: "Name", type: %SimpleType{}}]}
     }
 
-    termo = %{"Nome" => "Tom & Jerry <company>"}
+    term = %{"Name" => "Tom & Jerry <company>"}
 
-    assert {:ok, xml} = Codec.build(schema, termo)
-    assert {:ok, ^termo} = Codec.parse(schema, xml)
+    assert {:ok, xml} = Codec.build(schema, term)
+    assert {:ok, ^term} = Codec.parse(schema, xml)
   end
 
   describe "template" do
-    @schema %Elemento{
+    @schema %Element{
       tag: "E",
-      tipo: %TipoComplexo{
-        conteudo: [
-          %Elemento{tag: "Fixo", tipo: %TipoSimples{}},
-          %Elemento{tag: "Variavel", tipo: %TipoSimples{}}
+      type: %ComplexType{
+        content: [
+          %Element{tag: "Fixed", type: %SimpleType{}},
+          %Element{tag: "Variable", type: %SimpleType{}}
         ]
       }
     }
 
     test "compila com lacunas e renderiza preenchendo só o que varia" do
-      termo = %{"Fixo" => "sempre igual", "Variavel" => Codec.lacuna(:variavel)}
+      term = %{"Fixed" => "sempre igual", "Variable" => Codec.gap(:variable)}
 
-      assert {:ok, template} = Codec.compilar_template(@schema, termo)
-      assert xml1 = Codec.renderizar(template, %{variavel: "um"})
-      assert xml2 = Codec.renderizar(template, %{variavel: "outro"})
+      assert {:ok, template} = Codec.compile_template(@schema, term)
+      assert xml1 = Codec.render(template, %{variable: "um"})
+      assert xml2 = Codec.render(template, %{variable: "outro"})
 
-      assert {:ok, %{"Fixo" => "sempre igual", "Variavel" => "um"}} = Codec.parse(@schema, xml1)
+      assert {:ok, %{"Fixed" => "sempre igual", "Variable" => "um"}} = Codec.parse(@schema, xml1)
 
-      assert {:ok, %{"Fixo" => "sempre igual", "Variavel" => "outro"}} =
+      assert {:ok, %{"Fixed" => "sempre igual", "Variable" => "outro"}} =
                Codec.parse(@schema, xml2)
     end
 
     test "sem lacuna nenhuma, o template é só o XML fixo" do
-      termo = %{"Fixo" => "a", "Variavel" => "b"}
+      term = %{"Fixed" => "a", "Variable" => "b"}
 
-      assert {:ok, template} = Codec.compilar_template(@schema, termo)
-      assert Codec.renderizar(template, %{}) == Codec.renderizar(template, %{sobrando: 1})
+      assert {:ok, template} = Codec.compile_template(@schema, term)
+      assert Codec.render(template, %{}) == Codec.render(template, %{extra: 1})
     end
 
     test "escapa o valor da lacuna no momento de renderizar" do
-      termo = %{"Fixo" => "x", "Variavel" => Codec.lacuna(:variavel)}
-      assert {:ok, template} = Codec.compilar_template(@schema, termo)
+      term = %{"Fixed" => "x", "Variable" => Codec.gap(:variable)}
+      assert {:ok, template} = Codec.compile_template(@schema, term)
 
-      xml = Codec.renderizar(template, %{variavel: "Tom & Jerry"})
-      assert {:ok, %{"Variavel" => "Tom & Jerry"}} = Codec.parse(@schema, xml)
+      xml = Codec.render(template, %{variable: "Tom & Jerry"})
+      assert {:ok, %{"Variable" => "Tom & Jerry"}} = Codec.parse(@schema, xml)
     end
   end
 end

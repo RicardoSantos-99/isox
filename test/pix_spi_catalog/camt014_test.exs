@@ -3,16 +3,16 @@ defmodule PixSpiCatalog.Camt014Test do
 
   alias PixSpiCatalog.{AppHdr, Camt014}
 
-  @cabecalho %AppHdr{
-    ispb_origem: "00000000",
-    ispb_destino: "11111111",
+  @header %AppHdr{
+    from_ispb: "00000000",
+    to_ispb: "11111111",
     biz_msg_idr: "M123456780123456789abcdefghijklm",
-    criado_em: DateTime.utc_now() |> DateTime.truncate(:millisecond)
+    created_at: DateTime.utc_now() |> DateTime.truncate(:millisecond)
   }
 
-  @mensagem %Camt014{
+  @message %Camt014{
     msg_id: "M123456780123456789abcdefghijklm",
-    criado_em: DateTime.utc_now() |> DateTime.truncate(:millisecond),
+    created_at: DateTime.utc_now() |> DateTime.truncate(:millisecond),
     mmb_id_ispb: "11111111",
     mmb_nm: "Banco Exemplo S.A.",
     mmb_rtr_adr: "12345678000199",
@@ -23,15 +23,15 @@ defmodule PixSpiCatalog.Camt014Test do
   }
 
   test "monta e volta pra struct" do
-    assert {:ok, xml} = Camt014.build(@mensagem, @cabecalho, :v1_6)
+    assert {:ok, xml} = Camt014.build(@message, @header, :v1_6)
     assert {:ok, de_volta, :v1_6} = Camt014.parse(xml)
-    assert de_volta == @mensagem
+    assert de_volta == @message
   end
 
   test "campo obrigatório ausente é rejeitado antes de montar XML" do
-    mensagem = %{@mensagem | mmb_nm: nil}
-    assert {:error, motivo} = Camt014.build(mensagem, @cabecalho, :v1_6)
-    assert motivo =~ "mmb_nm"
+    message = %{@message | mmb_nm: nil}
+    assert {:error, reason} = Camt014.build(message, @header, :v1_6)
+    assert reason =~ "mmb_nm"
   end
 
   test "parse rejeita XML de outra mensagem" do
@@ -40,6 +40,6 @@ defmodule PixSpiCatalog.Camt014Test do
     <Envelope xmlns="https://www.bcb.gov.br/pi/camt.014/1.6"><Nada/></Envelope>
     """
 
-    assert {:error, _motivo} = Camt014.parse(outro_xml)
+    assert {:error, _reason} = Camt014.parse(outro_xml)
   end
 end

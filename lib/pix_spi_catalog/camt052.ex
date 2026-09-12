@@ -8,82 +8,82 @@ defmodule PixSpiCatalog.Camt052 do
   simplificação do `Pacs008` para `CdtTrfTxInf`).
 
   Este perfil do BCB é resumido: só conta de lançamentos
-  (`NbOfNtries`) e texto livre (`AddtlRptInf`) — o detalhamento por
+  (`NbOfNtries`) e text livre (`AddtlRptInf`) — o detalhamento por
   lançamento é o camt.054, não este.
   """
 
   alias PixSpiCatalog.AppHdr
-  alias PixSpiCatalog.Gerado.Camt052.V1_3
+  alias PixSpiCatalog.Generated.Camt052.V1_3
 
-  @type versao :: :v1_3
+  @type version :: :v1_3
 
-  defstruct [:msg_id, :criado_em, :rpt_id, :acct_ispb, :nb_of_ntries, :addtl_rpt_inf]
+  defstruct [:msg_id, :created_at, :rpt_id, :acct_ispb, :nb_of_ntries, :addtl_rpt_inf]
 
   @type t :: %__MODULE__{
           msg_id: String.t(),
-          criado_em: DateTime.t(),
+          created_at: DateTime.t(),
           rpt_id: String.t(),
           acct_ispb: String.t(),
           nb_of_ntries: String.t() | non_neg_integer(),
           addtl_rpt_inf: String.t()
         }
 
-  @campos_obrigatorios [:msg_id, :criado_em, :rpt_id, :acct_ispb, :nb_of_ntries, :addtl_rpt_inf]
+  @required_fields [:msg_id, :created_at, :rpt_id, :acct_ispb, :nb_of_ntries, :addtl_rpt_inf]
 
-  @modulo_por_versao %{v1_3: V1_3}
-  @versao_por_modulo Map.new(@modulo_por_versao, fn {v, m} -> {m, v} end)
+  @module_by_version %{v1_3: V1_3}
+  @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec build(t(), AppHdr.t(), versao()) :: {:ok, binary()} | {:error, String.t()}
-  def build(%__MODULE__{} = mensagem, %AppHdr{} = cabecalho, versao) when versao in [:v1_3] do
-    with :ok <- validar_obrigatorios(mensagem) do
-      modulo = Map.fetch!(@modulo_por_versao, versao)
+  @spec build(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
+  def build(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_3] do
+    with :ok <- validate_required(message) do
+      module = Map.fetch!(@module_by_version, version)
 
-      termo = %{
-        "AppHdr" => AppHdr.termo(cabecalho, modulo.msg_def_idr()),
-        "Document" => termo_document(mensagem)
+      term = %{
+        "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
+        "Document" => document_term(message)
       }
 
-      with {:ok, xml} <- modulo.build(termo) do
-        confirmar(modulo, xml)
+      with {:ok, xml} <- module.build(term) do
+        confirm(module, xml)
       end
     end
   end
 
   @doc "Parseia um XML de camt.052 de volta para a struct."
-  @spec parse(binary()) :: {:ok, t(), versao()} | {:error, term()}
+  @spec parse(binary()) :: {:ok, t(), version()} | {:error, term()}
   def parse(xml) when is_binary(xml) do
-    case PixSpiCatalog.Registro.parse(xml) do
-      {:ok, modulo, termo} ->
-        case Map.fetch(@versao_por_modulo, modulo) do
-          {:ok, versao} -> {:ok, struct_de_termo(termo), versao}
-          :error -> {:error, {:nao_e_camt052, modulo.msg_def_idr()}}
+    case PixSpiCatalog.Registry.parse(xml) do
+      {:ok, module, term} ->
+        case Map.fetch(@version_by_module, module) do
+          {:ok, version} -> {:ok, struct_from_term(term), version}
+          :error -> {:error, {:not_camt052, module.msg_def_idr()}}
         end
 
-      erro ->
-        erro
+      error ->
+        error
     end
   end
 
-  defp confirmar(modulo, xml) do
-    case modulo.parse(xml) do
-      {:ok, _termo} -> {:ok, xml}
-      {:error, motivo} -> {:error, motivo}
+  defp confirm(module, xml) do
+    case module.parse(xml) do
+      {:ok, _term} -> {:ok, xml}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp validar_obrigatorios(mensagem) do
-    faltando = Enum.filter(@campos_obrigatorios, &(Map.get(mensagem, &1) in [nil, ""]))
+  defp validate_required(message) do
+    missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
-    if faltando == [],
+    if missing == [],
       do: :ok,
-      else: {:error, "campos obrigatórios ausentes: #{inspect(faltando)}"}
+      else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp termo_document(m) do
+  defp document_term(m) do
     %{
       "BkToCstmrAcctRpt" => %{
-        "GrpHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => formatar_data_hora(m.criado_em)},
+        "GrpHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => format_datetime(m.created_at)},
         "Rpt" => [
           %{
             "Id" => m.rpt_id,
@@ -96,13 +96,13 @@ defmodule PixSpiCatalog.Camt052 do
     }
   end
 
-  defp struct_de_termo(termo) do
-    doc = get_in(termo, ["Document", "BkToCstmrAcctRpt"])
+  defp struct_from_term(term) do
+    doc = get_in(term, ["Document", "BkToCstmrAcctRpt"])
     [rpt] = doc["Rpt"]
 
     %__MODULE__{
       msg_id: get_in(doc, ["GrpHdr", "MsgId"]),
-      criado_em: parse_data_hora(get_in(doc, ["GrpHdr", "CreDtTm"])),
+      created_at: parse_datetime(get_in(doc, ["GrpHdr", "CreDtTm"])),
       rpt_id: rpt["Id"],
       acct_ispb: get_in(rpt, ["Acct", "Id", "Othr", "Id"]),
       nb_of_ntries: get_in(rpt, ["TxsSummry", "TtlNtries", "NbOfNtries"]),
@@ -110,14 +110,14 @@ defmodule PixSpiCatalog.Camt052 do
     }
   end
 
-  defp formatar_data_hora(%DateTime{} = dt) do
+  defp format_datetime(%DateTime{} = dt) do
     dt |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
   end
 
-  defp parse_data_hora(nil), do: nil
+  defp parse_datetime(nil), do: nil
 
-  defp parse_data_hora(texto) do
-    {:ok, dt, _offset} = DateTime.from_iso8601(texto)
+  defp parse_datetime(text) do
+    {:ok, dt, _offset} = DateTime.from_iso8601(text)
     dt
   end
 end

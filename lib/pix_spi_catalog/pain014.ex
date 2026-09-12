@@ -15,13 +15,13 @@ defmodule PixSpiCatalog.Pain014 do
   """
 
   alias PixSpiCatalog.AppHdr
-  alias PixSpiCatalog.Gerado.Pain014.{V2_3, V2_4}
+  alias PixSpiCatalog.Generated.Pain014.{V2_3, V2_4}
 
-  @type versao :: :v2_3 | :v2_4
+  @type version :: :v2_3 | :v2_4
 
   defstruct [
     :msg_id,
-    :criado_em,
+    :created_at,
     :orgnl_pmt_inf_id,
     :orgnl_end_to_end_id,
     :tx_sts,
@@ -33,7 +33,7 @@ defmodule PixSpiCatalog.Pain014 do
 
   @type t :: %__MODULE__{
           msg_id: String.t(),
-          criado_em: DateTime.t(),
+          created_at: DateTime.t(),
           orgnl_pmt_inf_id: String.t(),
           orgnl_end_to_end_id: String.t(),
           tx_sts: String.t(),
@@ -43,9 +43,9 @@ defmodule PixSpiCatalog.Pain014 do
           cdtr_cpf_cnpj: String.t()
         }
 
-  @campos_obrigatorios [
+  @required_fields [
     :msg_id,
-    :criado_em,
+    :created_at,
     :orgnl_pmt_inf_id,
     :orgnl_end_to_end_id,
     :tx_sts,
@@ -54,63 +54,63 @@ defmodule PixSpiCatalog.Pain014 do
     :cdtr_cpf_cnpj
   ]
 
-  @modulo_por_versao %{v2_3: V2_3, v2_4: V2_4}
-  @versao_por_modulo Map.new(@modulo_por_versao, fn {v, m} -> {m, v} end)
+  @module_by_version %{v2_3: V2_3, v2_4: V2_4}
+  @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec build(t(), AppHdr.t(), versao()) :: {:ok, binary()} | {:error, String.t()}
-  def build(%__MODULE__{} = mensagem, %AppHdr{} = cabecalho, versao)
-      when versao in [:v2_3, :v2_4] do
-    with :ok <- validar_obrigatorios(mensagem) do
-      modulo = Map.fetch!(@modulo_por_versao, versao)
+  @spec build(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
+  def build(%__MODULE__{} = message, %AppHdr{} = header, version)
+      when version in [:v2_3, :v2_4] do
+    with :ok <- validate_required(message) do
+      module = Map.fetch!(@module_by_version, version)
 
-      termo = %{
-        "AppHdr" => AppHdr.termo(cabecalho, modulo.msg_def_idr()),
-        "Document" => termo_document(mensagem)
+      term = %{
+        "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
+        "Document" => document_term(message)
       }
 
-      with {:ok, xml} <- modulo.build(termo) do
-        confirmar(modulo, xml)
+      with {:ok, xml} <- module.build(term) do
+        confirm(module, xml)
       end
     end
   end
 
   @doc "Parseia um XML de pain.014 de volta para a struct."
-  @spec parse(binary()) :: {:ok, t(), versao()} | {:error, term()}
+  @spec parse(binary()) :: {:ok, t(), version()} | {:error, term()}
   def parse(xml) when is_binary(xml) do
-    case PixSpiCatalog.Registro.parse(xml) do
-      {:ok, modulo, termo} ->
-        case Map.fetch(@versao_por_modulo, modulo) do
-          {:ok, versao} -> {:ok, struct_de_termo(termo), versao}
-          :error -> {:error, {:nao_e_pain014, modulo.msg_def_idr()}}
+    case PixSpiCatalog.Registry.parse(xml) do
+      {:ok, module, term} ->
+        case Map.fetch(@version_by_module, module) do
+          {:ok, version} -> {:ok, struct_from_term(term), version}
+          :error -> {:error, {:not_pain014, module.msg_def_idr()}}
         end
 
-      erro ->
-        erro
+      error ->
+        error
     end
   end
 
-  defp confirmar(modulo, xml) do
-    case modulo.parse(xml) do
-      {:ok, _termo} -> {:ok, xml}
-      {:error, motivo} -> {:error, motivo}
+  defp confirm(module, xml) do
+    case module.parse(xml) do
+      {:ok, _term} -> {:ok, xml}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp validar_obrigatorios(mensagem) do
-    faltando = Enum.filter(@campos_obrigatorios, &(Map.get(mensagem, &1) in [nil, ""]))
+  defp validate_required(message) do
+    missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
-    if faltando == [],
+    if missing == [],
       do: :ok,
-      else: {:error, "campos obrigatórios ausentes: #{inspect(faltando)}"}
+      else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp termo_document(m) do
+  defp document_term(m) do
     %{
       "CdtrPmtActvtnReqStsRpt" => %{
         "GrpHdr" => %{
           "MsgId" => m.msg_id,
-          "CreDtTm" => formatar_data_hora(m.criado_em),
+          "CreDtTm" => format_datetime(m.created_at),
           "InitgPty" => %{
             "Id" => %{"OrgId" => %{"Othr" => %{"Id" => String.duplicate("0", 14)}}}
           }
@@ -126,13 +126,13 @@ defmodule PixSpiCatalog.Pain014 do
               %{
                 "OrgnlEndToEndId" => m.orgnl_end_to_end_id,
                 "TxSts" => m.tx_sts,
-                "DbtrDcsnDtTm" => formatar_data_hora(m.dbtr_dcsn_dt_tm),
+                "DbtrDcsnDtTm" => format_datetime(m.dbtr_dcsn_dt_tm),
                 "OrgnlTxRef" => %{
-                  "CdtrAgt" => agente_termo(m.cdtr_agt_ispb),
+                  "CdtrAgt" => agent_term(m.cdtr_agt_ispb),
                   "Cdtr" => %{"Id" => %{"PrvtId" => %{"Othr" => %{"Id" => m.cdtr_cpf_cnpj}}}}
                 }
               }
-              |> talvez_por(
+              |> maybe_put(
                 "StsRsnInf",
                 if(m.rsn_prtry, do: %{"Rsn" => %{"Prtry" => m.rsn_prtry}})
               )
@@ -142,38 +142,38 @@ defmodule PixSpiCatalog.Pain014 do
     }
   end
 
-  defp agente_termo(ispb), do: %{"FinInstnId" => %{"ClrSysMmbId" => %{"MmbId" => ispb}}}
+  defp agent_term(ispb), do: %{"FinInstnId" => %{"ClrSysMmbId" => %{"MmbId" => ispb}}}
 
-  defp talvez_por(mapa, _chave, nil), do: mapa
-  defp talvez_por(mapa, chave, valor), do: Map.put(mapa, chave, valor)
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
-  defp struct_de_termo(termo) do
-    doc = get_in(termo, ["Document", "CdtrPmtActvtnReqStsRpt"])
+  defp struct_from_term(term) do
+    doc = get_in(term, ["Document", "CdtrPmtActvtnReqStsRpt"])
     grp = doc["GrpHdr"]
     [orgnl] = doc["OrgnlPmtInfAndSts"]
     tx = orgnl["TxInfAndSts"]
 
     %__MODULE__{
       msg_id: grp["MsgId"],
-      criado_em: parse_data_hora(grp["CreDtTm"]),
+      created_at: parse_datetime(grp["CreDtTm"]),
       orgnl_pmt_inf_id: orgnl["OrgnlPmtInfId"],
       orgnl_end_to_end_id: tx["OrgnlEndToEndId"],
       tx_sts: tx["TxSts"],
       rsn_prtry: get_in(tx, ["StsRsnInf", "Rsn", "Prtry"]),
-      dbtr_dcsn_dt_tm: parse_data_hora(tx["DbtrDcsnDtTm"]),
+      dbtr_dcsn_dt_tm: parse_datetime(tx["DbtrDcsnDtTm"]),
       cdtr_agt_ispb: get_in(tx, ["OrgnlTxRef", "CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
       cdtr_cpf_cnpj: get_in(tx, ["OrgnlTxRef", "Cdtr", "Id", "PrvtId", "Othr", "Id"])
     }
   end
 
-  defp formatar_data_hora(%DateTime{} = dt) do
+  defp format_datetime(%DateTime{} = dt) do
     dt |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
   end
 
-  defp parse_data_hora(nil), do: nil
+  defp parse_datetime(nil), do: nil
 
-  defp parse_data_hora(texto) do
-    {:ok, dt, _offset} = DateTime.from_iso8601(texto)
+  defp parse_datetime(text) do
+    {:ok, dt, _offset} = DateTime.from_iso8601(text)
     dt
   end
 end

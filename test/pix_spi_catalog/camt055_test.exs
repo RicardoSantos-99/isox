@@ -5,16 +5,16 @@ defmodule PixSpiCatalog.Camt055Test do
 
   @agora DateTime.utc_now() |> DateTime.truncate(:millisecond)
 
-  @cabecalho %AppHdr{
-    ispb_origem: "11111111",
-    ispb_destino: "22222222",
+  @header %AppHdr{
+    from_ispb: "11111111",
+    to_ispb: "22222222",
     biz_msg_idr: "M123456780123456789abcdefghijklm",
-    criado_em: @agora
+    created_at: @agora
   }
 
-  @mensagem %Camt055{
+  @message %Camt055{
     assgnmt_id: "M123456780123456789abcdefghijklm",
-    criado_em: @agora,
+    created_at: @agora,
     assgnr_ispb: "11111111",
     assgne_ispb: "22222222",
     pmt_cxl_id: "CA1234567820260912abcdefghijk",
@@ -27,15 +27,15 @@ defmodule PixSpiCatalog.Camt055Test do
   }
 
   test "monta e volta pra struct" do
-    assert {:ok, xml} = Camt055.build(@mensagem, @cabecalho, :v1_1)
+    assert {:ok, xml} = Camt055.build(@message, @header, :v1_1)
     assert {:ok, de_volta, :v1_1} = Camt055.parse(xml)
-    assert de_volta == @mensagem
+    assert de_volta == @message
   end
 
   test "campo obrigatório ausente é rejeitado antes de montar XML" do
-    mensagem = %{@mensagem | orgnl_end_to_end_id: nil}
-    assert {:error, motivo} = Camt055.build(mensagem, @cabecalho, :v1_1)
-    assert motivo =~ "orgnl_end_to_end_id"
+    message = %{@message | orgnl_end_to_end_id: nil}
+    assert {:error, reason} = Camt055.build(message, @header, :v1_1)
+    assert reason =~ "orgnl_end_to_end_id"
   end
 
   test "parse rejeita XML de outra mensagem" do
@@ -44,6 +44,6 @@ defmodule PixSpiCatalog.Camt055Test do
     <Envelope xmlns="https://www.bcb.gov.br/pi/camt.055/1.1"><Nada/></Envelope>
     """
 
-    assert {:error, _motivo} = Camt055.parse(outro_xml)
+    assert {:error, _reason} = Camt055.parse(outro_xml)
   end
 end

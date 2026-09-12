@@ -3,28 +3,28 @@ defmodule PixSpiCatalog.Camt025Test do
 
   alias PixSpiCatalog.{AppHdr, Camt025}
 
-  @cabecalho %AppHdr{
-    ispb_origem: "00000000",
-    ispb_destino: "11111111",
+  @header %AppHdr{
+    from_ispb: "00000000",
+    to_ispb: "11111111",
     biz_msg_idr: "M123456780123456789abcdefghijklm",
-    criado_em: DateTime.utc_now() |> DateTime.truncate(:millisecond)
+    created_at: DateTime.utc_now() |> DateTime.truncate(:millisecond)
   }
 
   test "sem confirmação nenhuma é rejeitado (RctDtls exige ao menos 1 no schema real)" do
-    mensagem = %Camt025{
+    message = %Camt025{
       msg_id: "M123456780123456789abcdefghijklm",
-      criado_em: DateTime.utc_now() |> DateTime.truncate(:millisecond)
+      created_at: DateTime.utc_now() |> DateTime.truncate(:millisecond)
     }
 
-    assert {:error, motivo} = Camt025.build(mensagem, @cabecalho, :v1_0)
-    assert motivo =~ "RctDtls"
+    assert {:error, reason} = Camt025.build(message, @header, :v1_0)
+    assert reason =~ "RctDtls"
   end
 
   test "confirmação de aceite, sem informar motivo" do
-    mensagem = %Camt025{
+    message = %Camt025{
       msg_id: "M123456780123456789abcdefghijklm",
-      criado_em: DateTime.utc_now() |> DateTime.truncate(:millisecond),
-      confirmacoes: [
+      created_at: DateTime.utc_now() |> DateTime.truncate(:millisecond),
+      confirmations: [
         %{
           orgnl_msg_id: "M123456780123456789abcdefghijklo",
           orgnl_pmt_id: "D12345678202609121030abcdefghijk",
@@ -33,19 +33,19 @@ defmodule PixSpiCatalog.Camt025Test do
       ]
     }
 
-    assert {:ok, xml} = Camt025.build(mensagem, @cabecalho, :v1_0)
+    assert {:ok, xml} = Camt025.build(message, @header, :v1_0)
     assert {:ok, de_volta, :v1_0} = Camt025.parse(xml)
-    assert [confirmacao] = de_volta.confirmacoes
-    assert confirmacao.sts == "ACPT"
-    assert confirmacao.rsn_prtry == nil
+    assert [confirmation] = de_volta.confirmations
+    assert confirmation.sts == "ACPT"
+    assert confirmation.rsn_prtry == nil
     refute xml =~ "StsRsn"
   end
 
   test "várias confirmações, uma rejeitada com motivo e informação adicional" do
-    mensagem = %Camt025{
+    message = %Camt025{
       msg_id: "M123456780123456789abcdefghijklm",
-      criado_em: DateTime.utc_now() |> DateTime.truncate(:millisecond),
-      confirmacoes: [
+      created_at: DateTime.utc_now() |> DateTime.truncate(:millisecond),
+      confirmations: [
         %{
           orgnl_msg_id: "M123456780123456789abcdefghijklo",
           orgnl_pmt_id: "D12345678202609121030abcdefghijk",
@@ -61,10 +61,10 @@ defmodule PixSpiCatalog.Camt025Test do
       ]
     }
 
-    assert {:ok, xml} = Camt025.build(mensagem, @cabecalho, :v1_0)
+    assert {:ok, xml} = Camt025.build(message, @header, :v1_0)
     assert {:ok, de_volta, :v1_0} = Camt025.parse(xml)
-    assert length(de_volta.confirmacoes) == 2
-    [_, rejeitada] = de_volta.confirmacoes
+    assert length(de_volta.confirmations) == 2
+    [_, rejeitada] = de_volta.confirmations
     assert rejeitada.sts == "RJCT"
     assert rejeitada.rsn_prtry == "AM01"
     assert rejeitada.addtl_inf == "fora do prazo de recência"
@@ -76,6 +76,6 @@ defmodule PixSpiCatalog.Camt025Test do
     <Envelope xmlns="https://www.bcb.gov.br/pi/camt.025/1.0"><Nada/></Envelope>
     """
 
-    assert {:error, _motivo} = Camt025.parse(outro_xml)
+    assert {:error, _reason} = Camt025.parse(outro_xml)
   end
 end

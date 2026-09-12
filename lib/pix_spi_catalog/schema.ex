@@ -1,35 +1,35 @@
 defmodule PixSpiCatalog.Schema do
   @moduledoc """
   Estruturas do schema normalizado, derivado dos XSDs do catálogo (ADR
-  0004). Uma árvore destas é o que o gerador (`Xsd.Compilador`) produz e o
+  0004). Uma árvore destas é o que o gerador (`Xsd.Compiler`) produz e o
   que o motor genérico (`Xml.Codec`) percorre para fazer `parse`/`build`.
 
   Não referencia tipo por nome: cada árvore já vem com todo tipo nomeado do
   XSD resolvido e embutido no lugar — não há indireção em tempo de execução.
   """
 
-  defmodule Elemento do
+  defmodule Element do
     @moduledoc "Um `<xs:element>`: nome, tipo e cardinalidade."
-    @enforce_keys [:tag, :tipo]
-    defstruct [:tag, :tipo, min: 1, max: 1]
+    @enforce_keys [:tag, :type]
+    defstruct [:tag, :type, min: 1, max: 1]
 
     @type t :: %__MODULE__{
             tag: String.t(),
-            tipo: PixSpiCatalog.Schema.tipo(),
+            type: PixSpiCatalog.Schema.element_type(),
             min: non_neg_integer(),
-            max: pos_integer() | :ilimitado
+            max: pos_integer() | :unbounded
           }
   end
 
-  defmodule Atributo do
+  defmodule Attribute do
     @moduledoc "Um atributo XML (ex.: `Ccy` em `<IntrBkSttlmAmt Ccy=\"BRL\">`)."
-    @enforce_keys [:tag, :tipo]
-    defstruct [:tag, :tipo, obrigatorio: true]
+    @enforce_keys [:tag, :type]
+    defstruct [:tag, :type, required: true]
 
-    @type t :: %__MODULE__{tag: String.t(), tipo: PixSpiCatalog.Schema.TipoSimples.t()}
+    @type t :: %__MODULE__{tag: String.t(), type: PixSpiCatalog.Schema.SimpleType.t()}
   end
 
-  defmodule TipoSimples do
+  defmodule SimpleType do
     @moduledoc "Um `<xs:simpleType>` com `<xs:restriction>`: valida texto, não estrutura."
     defstruct base: "string", pattern: nil, enum: nil, max_length: nil, min_length: nil
 
@@ -42,7 +42,7 @@ defmodule PixSpiCatalog.Schema do
           }
   end
 
-  defmodule Escolha do
+  defmodule Choice do
     @moduledoc """
     Um `<xs:choice>`: exatamente uma das opções listadas aparece (ou
     nenhuma, se `min: 0`). Uma opção é normalmente 1 elemento; quando vem
@@ -50,33 +50,33 @@ defmodule PixSpiCatalog.Schema do
     elemento, a opção é a lista de elementos do grupo inteiro — todos
     aparecem juntos, ou nenhum (ex.: `reda.022`, `ReqdModContatoChoice`).
     """
-    @enforce_keys [:opcoes]
-    defstruct [:opcoes, min: 1, max: 1]
+    @enforce_keys [:options]
+    defstruct [:options, min: 1, max: 1]
 
     @type t :: %__MODULE__{
-            opcoes: [Elemento.t() | [Elemento.t()]],
+            options: [Element.t() | [Element.t()]],
             min: non_neg_integer(),
-            max: pos_integer() | :ilimitado
+            max: pos_integer() | :unbounded
           }
   end
 
-  defmodule TipoComplexo do
+  defmodule ComplexType do
     @moduledoc """
     Um `<xs:complexType>`: uma sequência de elementos/escolhas, mais,
     opcionalmente, atributos e conteúdo de texto simples (`simpleContent` +
     `extension` — ex.: `IntrBkSttlmAmt`, que tem valor e o atributo `Ccy`).
     """
-    defstruct conteudo: [], atributos: [], texto: nil
+    defstruct content: [], attributes: [], text: nil
 
     @type t :: %__MODULE__{
-            conteudo: [Elemento.t() | Escolha.t()],
-            atributos: [Atributo.t()],
-            texto: TipoSimples.t() | nil
+            content: [Element.t() | Choice.t()],
+            attributes: [Attribute.t()],
+            text: SimpleType.t() | nil
           }
   end
 
   @typedoc "Opaco (`xs:any`, usado só pelo `<Sgntr>`): o conteúdo não é interpretado."
-  @type opaco :: :opaco
+  @type opaque :: :opaque
 
-  @type tipo :: TipoSimples.t() | TipoComplexo.t() | opaco()
+  @type element_type :: SimpleType.t() | ComplexType.t() | opaque()
 end

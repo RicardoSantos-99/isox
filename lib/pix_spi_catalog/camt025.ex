@@ -9,13 +9,13 @@ defmodule PixSpiCatalog.Camt025 do
   """
 
   alias PixSpiCatalog.AppHdr
-  alias PixSpiCatalog.Gerado.Camt025.V1_0
+  alias PixSpiCatalog.Generated.Camt025.V1_0
 
-  @type versao :: :v1_0
+  @type version :: :v1_0
 
-  defstruct [:msg_id, :criado_em, confirmacoes: []]
+  defstruct [:msg_id, :created_at, confirmations: []]
 
-  @type confirmacao :: %{
+  @type confirmation :: %{
           orgnl_msg_id: String.t(),
           orgnl_pmt_id: String.t(),
           sts: String.t(),
@@ -25,106 +25,106 @@ defmodule PixSpiCatalog.Camt025 do
 
   @type t :: %__MODULE__{
           msg_id: String.t(),
-          criado_em: DateTime.t(),
-          confirmacoes: [confirmacao()]
+          created_at: DateTime.t(),
+          confirmations: [confirmation()]
         }
 
-  @campos_obrigatorios [:msg_id, :criado_em]
+  @required_fields [:msg_id, :created_at]
 
-  @modulo_por_versao %{v1_0: V1_0}
-  @versao_por_modulo Map.new(@modulo_por_versao, fn {v, m} -> {m, v} end)
+  @module_by_version %{v1_0: V1_0}
+  @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec build(t(), AppHdr.t(), versao()) :: {:ok, binary()} | {:error, String.t()}
-  def build(%__MODULE__{} = mensagem, %AppHdr{} = cabecalho, versao) when versao in [:v1_0] do
-    with :ok <- validar_obrigatorios(mensagem) do
-      modulo = Map.fetch!(@modulo_por_versao, versao)
+  @spec build(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
+  def build(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_0] do
+    with :ok <- validate_required(message) do
+      module = Map.fetch!(@module_by_version, version)
 
-      termo = %{
-        "AppHdr" => AppHdr.termo(cabecalho, modulo.msg_def_idr()),
-        "Document" => termo_document(mensagem)
+      term = %{
+        "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
+        "Document" => document_term(message)
       }
 
-      with {:ok, xml} <- modulo.build(termo) do
-        confirmar(modulo, xml)
+      with {:ok, xml} <- module.build(term) do
+        confirm(module, xml)
       end
     end
   end
 
   @doc "Parseia um XML de camt.025 de volta para a struct."
-  @spec parse(binary()) :: {:ok, t(), versao()} | {:error, term()}
+  @spec parse(binary()) :: {:ok, t(), version()} | {:error, term()}
   def parse(xml) when is_binary(xml) do
-    case PixSpiCatalog.Registro.parse(xml) do
-      {:ok, modulo, termo} ->
-        case Map.fetch(@versao_por_modulo, modulo) do
-          {:ok, versao} -> {:ok, struct_de_termo(termo), versao}
-          :error -> {:error, {:nao_e_camt025, modulo.msg_def_idr()}}
+    case PixSpiCatalog.Registry.parse(xml) do
+      {:ok, module, term} ->
+        case Map.fetch(@version_by_module, module) do
+          {:ok, version} -> {:ok, struct_from_term(term), version}
+          :error -> {:error, {:not_camt025, module.msg_def_idr()}}
         end
 
-      erro ->
-        erro
+      error ->
+        error
     end
   end
 
-  defp confirmar(modulo, xml) do
-    case modulo.parse(xml) do
-      {:ok, _termo} -> {:ok, xml}
-      {:error, motivo} -> {:error, motivo}
+  defp confirm(module, xml) do
+    case module.parse(xml) do
+      {:ok, _term} -> {:ok, xml}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp validar_obrigatorios(mensagem) do
-    faltando = Enum.filter(@campos_obrigatorios, &(Map.get(mensagem, &1) in [nil, ""]))
+  defp validate_required(message) do
+    missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
-    if faltando == [],
+    if missing == [],
       do: :ok,
-      else: {:error, "campos obrigatórios ausentes: #{inspect(faltando)}"}
+      else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp termo_document(m) do
+  defp document_term(m) do
     %{
       "Rct" => %{
-        "MsgHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => formatar_data_hora(m.criado_em)},
-        "RctDtls" => Enum.map(m.confirmacoes, &termo_confirmacao/1)
+        "MsgHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => format_datetime(m.created_at)},
+        "RctDtls" => Enum.map(m.confirmations, &confirmation_term/1)
       }
     }
   end
 
-  defp termo_confirmacao(c) do
+  defp confirmation_term(c) do
     %{
       "OrgnlMsgId" => %{"MsgId" => c.orgnl_msg_id},
       "OrgnlPmtId" => %{"PrtryId" => c.orgnl_pmt_id},
       "ReqHdlg" =>
         %{"Sts" => %{"Cd" => c.sts}}
-        |> talvez_por("StsRsn", sts_rsn_termo(c))
+        |> maybe_put("StsRsn", sts_rsn_term(c))
     }
   end
 
-  defp sts_rsn_termo(c) do
+  defp sts_rsn_term(c) do
     rsn_prtry = Map.get(c, :rsn_prtry)
     addtl_inf = Map.get(c, :addtl_inf)
 
     if rsn_prtry == nil and addtl_inf == nil do
       nil
     else
-      %{"AddtlInf" => addtl_inf} |> talvez_por("Rsn", if(rsn_prtry, do: %{"Prtry" => rsn_prtry}))
+      %{"AddtlInf" => addtl_inf} |> maybe_put("Rsn", if(rsn_prtry, do: %{"Prtry" => rsn_prtry}))
     end
   end
 
-  defp talvez_por(mapa, _chave, nil), do: mapa
-  defp talvez_por(mapa, chave, valor), do: Map.put(mapa, chave, valor)
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
-  defp struct_de_termo(termo) do
-    doc = get_in(termo, ["Document", "Rct"])
+  defp struct_from_term(term) do
+    doc = get_in(term, ["Document", "Rct"])
 
     %__MODULE__{
       msg_id: get_in(doc, ["MsgHdr", "MsgId"]),
-      criado_em: parse_data_hora(get_in(doc, ["MsgHdr", "CreDtTm"])),
-      confirmacoes: doc |> Map.get("RctDtls", []) |> Enum.map(&confirmacao_de_termo/1)
+      created_at: parse_datetime(get_in(doc, ["MsgHdr", "CreDtTm"])),
+      confirmations: doc |> Map.get("RctDtls", []) |> Enum.map(&confirmation_from_term/1)
     }
   end
 
-  defp confirmacao_de_termo(t) do
+  defp confirmation_from_term(t) do
     stsrsn = t["ReqHdlg"]["StsRsn"] || %{}
 
     %{
@@ -136,14 +136,14 @@ defmodule PixSpiCatalog.Camt025 do
     }
   end
 
-  defp formatar_data_hora(%DateTime{} = dt) do
+  defp format_datetime(%DateTime{} = dt) do
     dt |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
   end
 
-  defp parse_data_hora(nil), do: nil
+  defp parse_datetime(nil), do: nil
 
-  defp parse_data_hora(texto) do
-    {:ok, dt, _offset} = DateTime.from_iso8601(texto)
+  defp parse_datetime(text) do
+    {:ok, dt, _offset} = DateTime.from_iso8601(text)
     dt
   end
 end

@@ -14,133 +14,133 @@ defmodule PixSpiCatalog.Pain013 do
   """
 
   alias PixSpiCatalog.AppHdr
-  alias PixSpiCatalog.Gerado.Pain013.V2_2
+  alias PixSpiCatalog.Generated.Pain013.V2_2
 
-  @type versao :: :v2_2
+  @type version :: :v2_2
 
   # credo:disable-for-next-line Credo.Check.Warning.StructFieldAmount
   defstruct [
     :msg_id,
-    :criado_em,
+    :created_at,
     :pmt_inf_id,
     :reqd_exctn_dt,
     :xpry_dt,
     :dbtr_cpf_cnpj,
     :dbtr_agt_ispb,
-    :ultmt_dbtr_nome,
+    :ultmt_dbtr_name,
     :ultmt_dbtr_cpf_cnpj,
     :end_to_end_id,
-    :valor,
+    :value,
     :mndt_id,
     :cdtr_agt_ispb,
     :cdtr_cpf_cnpj,
-    :cdtr_conta_id,
-    :cdtr_conta_issr,
-    :cdtr_conta_tipo,
+    :cdtr_acct_id,
+    :cdtr_acct_issr,
+    :cdtr_acct_type,
     :purp_prtry,
-    :info_pagamento
+    :rmt_inf
   ]
 
   @type t :: %__MODULE__{}
 
-  @campos_obrigatorios [
+  @required_fields [
     :msg_id,
-    :criado_em,
+    :created_at,
     :pmt_inf_id,
     :xpry_dt,
     :dbtr_cpf_cnpj,
     :dbtr_agt_ispb,
     :end_to_end_id,
-    :valor,
+    :value,
     :mndt_id,
     :cdtr_agt_ispb,
     :cdtr_cpf_cnpj,
-    :cdtr_conta_id,
-    :cdtr_conta_tipo,
+    :cdtr_acct_id,
+    :cdtr_acct_type,
     :purp_prtry
   ]
 
-  @modulo_por_versao %{v2_2: V2_2}
-  @versao_por_modulo Map.new(@modulo_por_versao, fn {v, m} -> {m, v} end)
+  @module_by_version %{v2_2: V2_2}
+  @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec build(t(), AppHdr.t(), versao()) :: {:ok, binary()} | {:error, String.t()}
-  def build(%__MODULE__{} = mensagem, %AppHdr{} = cabecalho, versao) when versao in [:v2_2] do
-    with :ok <- validar_obrigatorios(mensagem) do
-      modulo = Map.fetch!(@modulo_por_versao, versao)
+  @spec build(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
+  def build(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v2_2] do
+    with :ok <- validate_required(message) do
+      module = Map.fetch!(@module_by_version, version)
 
-      termo = %{
-        "AppHdr" => AppHdr.termo(cabecalho, modulo.msg_def_idr()),
-        "Document" => termo_document(mensagem)
+      term = %{
+        "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
+        "Document" => document_term(message)
       }
 
-      with {:ok, xml} <- modulo.build(termo) do
-        confirmar(modulo, xml)
+      with {:ok, xml} <- module.build(term) do
+        confirm(module, xml)
       end
     end
   end
 
   @doc "Parseia um XML de pain.013 de volta para a struct."
-  @spec parse(binary()) :: {:ok, t(), versao()} | {:error, term()}
+  @spec parse(binary()) :: {:ok, t(), version()} | {:error, term()}
   def parse(xml) when is_binary(xml) do
-    case PixSpiCatalog.Registro.parse(xml) do
-      {:ok, modulo, termo} ->
-        case Map.fetch(@versao_por_modulo, modulo) do
-          {:ok, versao} -> {:ok, struct_de_termo(termo), versao}
-          :error -> {:error, {:nao_e_pain013, modulo.msg_def_idr()}}
+    case PixSpiCatalog.Registry.parse(xml) do
+      {:ok, module, term} ->
+        case Map.fetch(@version_by_module, module) do
+          {:ok, version} -> {:ok, struct_from_term(term), version}
+          :error -> {:error, {:not_pain013, module.msg_def_idr()}}
         end
 
-      erro ->
-        erro
+      error ->
+        error
     end
   end
 
-  defp confirmar(modulo, xml) do
-    case modulo.parse(xml) do
-      {:ok, _termo} -> {:ok, xml}
-      {:error, motivo} -> {:error, motivo}
+  defp confirm(module, xml) do
+    case module.parse(xml) do
+      {:ok, _term} -> {:ok, xml}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp validar_obrigatorios(mensagem) do
-    faltando = Enum.filter(@campos_obrigatorios, &(Map.get(mensagem, &1) in [nil, ""]))
+  defp validate_required(message) do
+    missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
-    if faltando == [],
+    if missing == [],
       do: :ok,
-      else: {:error, "campos obrigatórios ausentes: #{inspect(faltando)}"}
+      else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp termo_document(m) do
+  defp document_term(m) do
     %{
       "CdtrPmtActvtnReq" => %{
         "GrpHdr" => %{
           "MsgId" => m.msg_id,
-          "CreDtTm" => formatar_data_hora(m.criado_em),
+          "CreDtTm" => format_datetime(m.created_at),
           "NbOfTxs" => "1",
           "InitgPty" => %{"Id" => %{"OrgId" => %{"Othr" => %{"Id" => String.duplicate("0", 14)}}}}
         },
-        "PmtInf" => [termo_pmt_inf(m)]
+        "PmtInf" => [pmt_inf_term(m)]
       }
     }
   end
 
-  defp termo_pmt_inf(m) do
+  defp pmt_inf_term(m) do
     %{
       "PmtInfId" => m.pmt_inf_id,
       "PmtMtd" => "TRF",
       "XpryDt" => %{"Dt" => Date.to_iso8601(m.xpry_dt)},
       "Dbtr" => %{"Id" => %{"PrvtId" => %{"Othr" => %{"Id" => m.dbtr_cpf_cnpj}}}},
-      "DbtrAgt" => agente_termo(m.dbtr_agt_ispb),
-      "CdtTrfTx" => termo_cdt_trf_tx(m)
+      "DbtrAgt" => agent_term(m.dbtr_agt_ispb),
+      "CdtTrfTx" => cdt_trf_tx_term(m)
     }
-    |> talvez_por(
+    |> maybe_put(
       "ReqdExctnDt",
-      if(m.reqd_exctn_dt, do: %{"DtTm" => formatar_data_hora(m.reqd_exctn_dt)})
+      if(m.reqd_exctn_dt, do: %{"DtTm" => format_datetime(m.reqd_exctn_dt)})
     )
-    |> talvez_por("UltmtDbtr", ultmt_dbtr_termo(m))
+    |> maybe_put("UltmtDbtr", ultmt_dbtr_term(m))
   end
 
-  defp termo_cdt_trf_tx(m) do
+  defp cdt_trf_tx_term(m) do
     %{
       "PmtId" => %{"EndToEndId" => m.end_to_end_id},
       "PmtTpInf" => %{
@@ -148,36 +148,36 @@ defmodule PixSpiCatalog.Pain013 do
         "SvcLvl" => %{"Prtry" => "PAGAGD"},
         "LclInstrm" => %{"Prtry" => "AUTO"}
       },
-      "Amt" => %{"InstdAmt" => %{valor: to_string(m.valor), atributos: %{"Ccy" => "BRL"}}},
+      "Amt" => %{"InstdAmt" => %{value: to_string(m.value), attributes: %{"Ccy" => "BRL"}}},
       "ChrgBr" => "SLEV",
       "MndtRltdInf" => %{"MndtId" => m.mndt_id},
-      "CdtrAgt" => agente_termo(m.cdtr_agt_ispb),
+      "CdtrAgt" => agent_term(m.cdtr_agt_ispb),
       "Cdtr" => %{"Id" => %{"PrvtId" => %{"Othr" => %{"Id" => m.cdtr_cpf_cnpj}}}},
       "CdtrAcct" => %{
-        "Id" => %{"Othr" => %{"Id" => m.cdtr_conta_id, "Issr" => m.cdtr_conta_issr}},
-        "Tp" => %{"Cd" => m.cdtr_conta_tipo}
+        "Id" => %{"Othr" => %{"Id" => m.cdtr_acct_id, "Issr" => m.cdtr_acct_issr}},
+        "Tp" => %{"Cd" => m.cdtr_acct_type}
       },
       "Purp" => %{"Prtry" => m.purp_prtry}
     }
-    |> talvez_por("RmtInf", if(m.info_pagamento, do: %{"Ustrd" => m.info_pagamento}))
+    |> maybe_put("RmtInf", if(m.rmt_inf, do: %{"Ustrd" => m.rmt_inf}))
   end
 
-  defp ultmt_dbtr_termo(%{ultmt_dbtr_nome: nil}), do: nil
+  defp ultmt_dbtr_term(%{ultmt_dbtr_name: nil}), do: nil
 
-  defp ultmt_dbtr_termo(m) do
+  defp ultmt_dbtr_term(m) do
     %{
-      "Nm" => m.ultmt_dbtr_nome,
+      "Nm" => m.ultmt_dbtr_name,
       "Id" => %{"PrvtId" => %{"Othr" => %{"Id" => m.ultmt_dbtr_cpf_cnpj}}}
     }
   end
 
-  defp agente_termo(ispb), do: %{"FinInstnId" => %{"ClrSysMmbId" => %{"MmbId" => ispb}}}
+  defp agent_term(ispb), do: %{"FinInstnId" => %{"ClrSysMmbId" => %{"MmbId" => ispb}}}
 
-  defp talvez_por(mapa, _chave, nil), do: mapa
-  defp talvez_por(mapa, chave, valor), do: Map.put(mapa, chave, valor)
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
-  defp struct_de_termo(termo) do
-    doc = get_in(termo, ["Document", "CdtrPmtActvtnReq"])
+  defp struct_from_term(term) do
+    doc = get_in(term, ["Document", "CdtrPmtActvtnReq"])
     grp = doc["GrpHdr"]
     [pmt_inf] = doc["PmtInf"]
     ultmt_dbtr = pmt_inf["UltmtDbtr"] || %{}
@@ -186,38 +186,38 @@ defmodule PixSpiCatalog.Pain013 do
 
     %__MODULE__{
       msg_id: grp["MsgId"],
-      criado_em: parse_data_hora(grp["CreDtTm"]),
+      created_at: parse_datetime(grp["CreDtTm"]),
       pmt_inf_id: pmt_inf["PmtInfId"],
-      reqd_exctn_dt: get_in(pmt_inf, ["ReqdExctnDt", "DtTm"]) |> parse_data_hora(),
-      xpry_dt: get_in(pmt_inf, ["XpryDt", "Dt"]) |> parse_data(),
+      reqd_exctn_dt: get_in(pmt_inf, ["ReqdExctnDt", "DtTm"]) |> parse_datetime(),
+      xpry_dt: get_in(pmt_inf, ["XpryDt", "Dt"]) |> parse_date(),
       dbtr_cpf_cnpj: get_in(pmt_inf, ["Dbtr", "Id", "PrvtId", "Othr", "Id"]),
       dbtr_agt_ispb: get_in(pmt_inf, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      ultmt_dbtr_nome: ultmt_dbtr["Nm"],
+      ultmt_dbtr_name: ultmt_dbtr["Nm"],
       ultmt_dbtr_cpf_cnpj: get_in(ultmt_dbtr, ["Id", "PrvtId", "Othr", "Id"]),
       end_to_end_id: get_in(tx, ["PmtId", "EndToEndId"]),
-      valor: get_in(tx, ["Amt", "InstdAmt", :valor]),
+      value: get_in(tx, ["Amt", "InstdAmt", :value]),
       mndt_id: get_in(tx, ["MndtRltdInf", "MndtId"]),
       cdtr_agt_ispb: get_in(tx, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
       cdtr_cpf_cnpj: get_in(tx, ["Cdtr", "Id", "PrvtId", "Othr", "Id"]),
-      cdtr_conta_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
-      cdtr_conta_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
-      cdtr_conta_tipo: get_in(cdtr_acct, ["Tp", "Cd"]),
+      cdtr_acct_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
+      cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
+      cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
       purp_prtry: get_in(tx, ["Purp", "Prtry"]),
-      info_pagamento: get_in(tx, ["RmtInf", "Ustrd"])
+      rmt_inf: get_in(tx, ["RmtInf", "Ustrd"])
     }
   end
 
-  defp formatar_data_hora(%DateTime{} = dt) do
+  defp format_datetime(%DateTime{} = dt) do
     dt |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
   end
 
-  defp parse_data_hora(nil), do: nil
+  defp parse_datetime(nil), do: nil
 
-  defp parse_data_hora(texto) do
-    {:ok, dt, _offset} = DateTime.from_iso8601(texto)
+  defp parse_datetime(text) do
+    {:ok, dt, _offset} = DateTime.from_iso8601(text)
     dt
   end
 
-  defp parse_data(nil), do: nil
-  defp parse_data(texto), do: Date.from_iso8601!(texto)
+  defp parse_date(nil), do: nil
+  defp parse_date(text), do: Date.from_iso8601!(text)
 end

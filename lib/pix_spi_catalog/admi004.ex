@@ -9,64 +9,64 @@ defmodule PixSpiCatalog.Admi004 do
   """
 
   alias PixSpiCatalog.AppHdr
-  alias PixSpiCatalog.Gerado.Admi004.V1_2
+  alias PixSpiCatalog.Generated.Admi004.V1_2
 
-  @type versao :: :v1_2
+  @type version :: :v1_2
 
-  defstruct [:desc]
+  defstruct [:description]
 
-  @type t :: %__MODULE__{desc: String.t()}
+  @type t :: %__MODULE__{description: String.t()}
 
-  @modulo_por_versao %{v1_2: V1_2}
-  @versao_por_modulo Map.new(@modulo_por_versao, fn {v, m} -> {m, v} end)
+  @module_by_version %{v1_2: V1_2}
+  @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec build(t(), AppHdr.t(), versao()) :: {:ok, binary()} | {:error, String.t()}
-  def build(%__MODULE__{} = mensagem, %AppHdr{} = cabecalho, versao) when versao in [:v1_2] do
-    with :ok <- validar_obrigatorios(mensagem) do
-      modulo = Map.fetch!(@modulo_por_versao, versao)
+  @spec build(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
+  def build(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_2] do
+    with :ok <- validate_required(message) do
+      module = Map.fetch!(@module_by_version, version)
 
-      termo = %{
-        "AppHdr" => AppHdr.termo(cabecalho, modulo.msg_def_idr()),
+      term = %{
+        "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
         "Document" => %{
-          "SysEvtNtfctn" => %{"EvtInf" => %{"EvtCd" => "SPI", "EvtDesc" => mensagem.desc}}
+          "SysEvtNtfctn" => %{"EvtInf" => %{"EvtCd" => "SPI", "EvtDesc" => message.description}}
         }
       }
 
-      with {:ok, xml} <- modulo.build(termo) do
-        confirmar(modulo, xml)
+      with {:ok, xml} <- module.build(term) do
+        confirm(module, xml)
       end
     end
   end
 
   @doc "Parseia um XML de admi.004 de volta para a struct."
-  @spec parse(binary()) :: {:ok, t(), versao()} | {:error, term()}
+  @spec parse(binary()) :: {:ok, t(), version()} | {:error, term()}
   def parse(xml) when is_binary(xml) do
-    case PixSpiCatalog.Registro.parse(xml) do
-      {:ok, modulo, termo} ->
-        case Map.fetch(@versao_por_modulo, modulo) do
-          {:ok, versao} ->
-            desc = get_in(termo, ["Document", "SysEvtNtfctn", "EvtInf", "EvtDesc"])
-            {:ok, %__MODULE__{desc: desc}, versao}
+    case PixSpiCatalog.Registry.parse(xml) do
+      {:ok, module, term} ->
+        case Map.fetch(@version_by_module, module) do
+          {:ok, version} ->
+            description = get_in(term, ["Document", "SysEvtNtfctn", "EvtInf", "EvtDesc"])
+            {:ok, %__MODULE__{description: description}, version}
 
           :error ->
-            {:error, {:nao_e_admi004, modulo.msg_def_idr()}}
+            {:error, {:not_admi004, module.msg_def_idr()}}
         end
 
-      erro ->
-        erro
+      error ->
+        error
     end
   end
 
-  defp confirmar(modulo, xml) do
-    case modulo.parse(xml) do
-      {:ok, _termo} -> {:ok, xml}
-      {:error, motivo} -> {:error, motivo}
+  defp confirm(module, xml) do
+    case module.parse(xml) do
+      {:ok, _term} -> {:ok, xml}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp validar_obrigatorios(%{desc: desc}) when desc in [nil, ""],
-    do: {:error, "campos obrigatórios ausentes: [:desc]"}
+  defp validate_required(%{description: description}) when description in [nil, ""],
+    do: {:error, "campos obrigatórios ausentes: [:description]"}
 
-  defp validar_obrigatorios(_mensagem), do: :ok
+  defp validate_required(_message), do: :ok
 end

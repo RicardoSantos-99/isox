@@ -11,14 +11,14 @@ defmodule PixSpiCatalog.Pain009 do
   """
 
   alias PixSpiCatalog.AppHdr
-  alias PixSpiCatalog.Gerado.Pain009.V1_1
+  alias PixSpiCatalog.Generated.Pain009.V1_1
 
-  @type versao :: :v1_1
+  @type version :: :v1_1
 
   # credo:disable-for-next-line Credo.Check.Warning.StructFieldAmount
   defstruct [
     :msg_id,
-    :criado_em,
+    :created_at,
     :mndt_id,
     :mndt_req_id,
     :frqcy_tp,
@@ -28,14 +28,14 @@ defmodule PixSpiCatalog.Pain009 do
     :colltn_amt,
     :adjstmnt_dt_ind,
     :adjstmnt_amt,
-    :cdtr_nome,
+    :cdtr_name,
     :cdtr_cpf_cnpj,
     :cdtr_agt_ispb,
     :dbtr_cpf_cnpj,
-    :dbtr_conta_id,
-    :dbtr_conta_issr,
+    :dbtr_acct_id,
+    :dbtr_acct_issr,
     :dbtr_agt_ispb,
-    :ultmt_dbtr_nome,
+    :ultmt_dbtr_name,
     :ultmt_dbtr_cpf_cnpj,
     :rfrd_doc_nb,
     :rfrd_doc_cdtr_ref,
@@ -45,83 +45,83 @@ defmodule PixSpiCatalog.Pain009 do
   @type prcg_dtls :: %{tp: String.t(), dt_tm: DateTime.t()}
   @type t :: %__MODULE__{}
 
-  @campos_obrigatorios [
+  @required_fields [
     :msg_id,
-    :criado_em,
+    :created_at,
     :mndt_id,
     :mndt_req_id,
     :frqcy_tp,
     :frst_colltn_dt,
     :trckg_ind,
-    :cdtr_nome,
+    :cdtr_name,
     :cdtr_cpf_cnpj,
     :cdtr_agt_ispb,
     :dbtr_cpf_cnpj,
-    :dbtr_conta_id,
+    :dbtr_acct_id,
     :dbtr_agt_ispb,
     :rfrd_doc_nb
   ]
 
-  @modulo_por_versao %{v1_1: V1_1}
-  @versao_por_modulo Map.new(@modulo_por_versao, fn {v, m} -> {m, v} end)
+  @module_by_version %{v1_1: V1_1}
+  @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec build(t(), AppHdr.t(), versao()) :: {:ok, binary()} | {:error, String.t()}
-  def build(%__MODULE__{} = mensagem, %AppHdr{} = cabecalho, versao) when versao in [:v1_1] do
-    with :ok <- validar_obrigatorios(mensagem) do
-      modulo = Map.fetch!(@modulo_por_versao, versao)
+  @spec build(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
+  def build(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_1] do
+    with :ok <- validate_required(message) do
+      module = Map.fetch!(@module_by_version, version)
 
-      termo = %{
-        "AppHdr" => AppHdr.termo(cabecalho, modulo.msg_def_idr()),
-        "Document" => termo_document(mensagem)
+      term = %{
+        "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
+        "Document" => document_term(message)
       }
 
-      with {:ok, xml} <- modulo.build(termo) do
-        confirmar(modulo, xml)
+      with {:ok, xml} <- module.build(term) do
+        confirm(module, xml)
       end
     end
   end
 
   @doc "Parseia um XML de pain.009 de volta para a struct."
-  @spec parse(binary()) :: {:ok, t(), versao()} | {:error, term()}
+  @spec parse(binary()) :: {:ok, t(), version()} | {:error, term()}
   def parse(xml) when is_binary(xml) do
-    case PixSpiCatalog.Registro.parse(xml) do
-      {:ok, modulo, termo} ->
-        case Map.fetch(@versao_por_modulo, modulo) do
-          {:ok, versao} -> {:ok, struct_de_termo(termo), versao}
-          :error -> {:error, {:nao_e_pain009, modulo.msg_def_idr()}}
+    case PixSpiCatalog.Registry.parse(xml) do
+      {:ok, module, term} ->
+        case Map.fetch(@version_by_module, module) do
+          {:ok, version} -> {:ok, struct_from_term(term), version}
+          :error -> {:error, {:not_pain009, module.msg_def_idr()}}
         end
 
-      erro ->
-        erro
+      error ->
+        error
     end
   end
 
-  defp confirmar(modulo, xml) do
-    case modulo.parse(xml) do
-      {:ok, _termo} -> {:ok, xml}
-      {:error, motivo} -> {:error, motivo}
+  defp confirm(module, xml) do
+    case module.parse(xml) do
+      {:ok, _term} -> {:ok, xml}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp validar_obrigatorios(mensagem) do
-    faltando = Enum.filter(@campos_obrigatorios, &(Map.get(mensagem, &1) in [nil, ""]))
+  defp validate_required(message) do
+    missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
-    if faltando == [],
+    if missing == [],
       do: :ok,
-      else: {:error, "campos obrigatórios ausentes: #{inspect(faltando)}"}
+      else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp termo_document(m) do
+  defp document_term(m) do
     %{
       "MndtInitnReq" => %{
-        "GrpHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => formatar_data_hora(m.criado_em)},
-        "Mndt" => [termo_mandato(m)]
+        "GrpHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => format_datetime(m.created_at)},
+        "Mndt" => [mandate_term(m)]
       }
     }
   end
 
-  defp termo_mandato(m) do
+  defp mandate_term(m) do
     %{
       "MndtId" => m.mndt_id,
       "MndtReqId" => m.mndt_req_id,
@@ -131,58 +131,58 @@ defmodule PixSpiCatalog.Pain009 do
           "Frqcy" => %{"Tp" => m.frqcy_tp},
           "FrstColltnDt" => Date.to_iso8601(m.frst_colltn_dt)
         }
-        |> talvez_por("FnlColltnDt", if(m.fnl_colltn_dt, do: Date.to_iso8601(m.fnl_colltn_dt))),
+        |> maybe_put("FnlColltnDt", if(m.fnl_colltn_dt, do: Date.to_iso8601(m.fnl_colltn_dt))),
       "TrckgInd" => to_string(m.trckg_ind),
       "Cdtr" => %{
-        "Nm" => m.cdtr_nome,
+        "Nm" => m.cdtr_name,
         "Id" => %{"PrvtId" => %{"Othr" => %{"Id" => m.cdtr_cpf_cnpj}}}
       },
-      "CdtrAgt" => agente_termo(m.cdtr_agt_ispb),
+      "CdtrAgt" => agent_term(m.cdtr_agt_ispb),
       "Dbtr" => %{"Id" => %{"PrvtId" => %{"Othr" => %{"Id" => m.dbtr_cpf_cnpj}}}},
       "DbtrAcct" => %{
-        "Id" => %{"Othr" => %{"Id" => m.dbtr_conta_id, "Issr" => m.dbtr_conta_issr}}
+        "Id" => %{"Othr" => %{"Id" => m.dbtr_acct_id, "Issr" => m.dbtr_acct_issr}}
       },
-      "DbtrAgt" => agente_termo(m.dbtr_agt_ispb),
+      "DbtrAgt" => agent_term(m.dbtr_agt_ispb),
       "RfrdDoc" => %{"Nb" => m.rfrd_doc_nb, "CdtrRef" => m.rfrd_doc_cdtr_ref},
       "SplmtryData" => %{
-        "Envlp" => %{"MndtPrcgDtls" => Enum.map(m.mndt_prcg_dtls, &termo_prcg/1)}
+        "Envlp" => %{"MndtPrcgDtls" => Enum.map(m.mndt_prcg_dtls, &prcg_term/1)}
       }
     }
-    |> talvez_por(
+    |> maybe_put(
       "ColltnAmt",
-      if(m.colltn_amt, do: %{valor: to_string(m.colltn_amt), atributos: %{"Ccy" => "BRL"}})
+      if(m.colltn_amt, do: %{value: to_string(m.colltn_amt), attributes: %{"Ccy" => "BRL"}})
     )
-    |> talvez_por("Adjstmnt", adjstmnt_termo(m))
-    |> talvez_por("UltmtDbtr", ultmt_dbtr_termo(m))
+    |> maybe_put("Adjstmnt", adjustment_term(m))
+    |> maybe_put("UltmtDbtr", ultmt_dbtr_term(m))
   end
 
-  defp termo_prcg(p), do: %{"MndtPrcgTp" => p.tp, "PrcgDtTm" => formatar_data_hora(p.dt_tm)}
+  defp prcg_term(p), do: %{"MndtPrcgTp" => p.tp, "PrcgDtTm" => format_datetime(p.dt_tm)}
 
-  defp adjstmnt_termo(%{adjstmnt_amt: nil}), do: nil
+  defp adjustment_term(%{adjstmnt_amt: nil}), do: nil
 
-  defp adjstmnt_termo(m) do
+  defp adjustment_term(m) do
     %{
       "DtAdjstmntRuleInd" => to_string(m.adjstmnt_dt_ind),
-      "Amt" => %{valor: to_string(m.adjstmnt_amt), atributos: %{"Ccy" => "BRL"}}
+      "Amt" => %{value: to_string(m.adjstmnt_amt), attributes: %{"Ccy" => "BRL"}}
     }
   end
 
-  defp ultmt_dbtr_termo(%{ultmt_dbtr_nome: nil}), do: nil
+  defp ultmt_dbtr_term(%{ultmt_dbtr_name: nil}), do: nil
 
-  defp ultmt_dbtr_termo(m) do
+  defp ultmt_dbtr_term(m) do
     %{
-      "Nm" => m.ultmt_dbtr_nome,
+      "Nm" => m.ultmt_dbtr_name,
       "Id" => %{"PrvtId" => %{"Othr" => %{"Id" => m.ultmt_dbtr_cpf_cnpj}}}
     }
   end
 
-  defp agente_termo(ispb), do: %{"FinInstnId" => %{"ClrSysMmbId" => %{"MmbId" => ispb}}}
+  defp agent_term(ispb), do: %{"FinInstnId" => %{"ClrSysMmbId" => %{"MmbId" => ispb}}}
 
-  defp talvez_por(mapa, _chave, nil), do: mapa
-  defp talvez_por(mapa, chave, valor), do: Map.put(mapa, chave, valor)
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
-  defp struct_de_termo(termo) do
-    doc = get_in(termo, ["Document", "MndtInitnReq"])
+  defp struct_from_term(term) do
+    doc = get_in(term, ["Document", "MndtInitnReq"])
     grp = doc["GrpHdr"]
     [mndt] = doc["Mndt"]
     ocrncs = mndt["Ocrncs"]
@@ -192,45 +192,45 @@ defmodule PixSpiCatalog.Pain009 do
 
     %__MODULE__{
       msg_id: grp["MsgId"],
-      criado_em: parse_data_hora(grp["CreDtTm"]),
+      created_at: parse_datetime(grp["CreDtTm"]),
       mndt_id: mndt["MndtId"],
       mndt_req_id: mndt["MndtReqId"],
       frqcy_tp: get_in(ocrncs, ["Frqcy", "Tp"]),
-      frst_colltn_dt: ocrncs["FrstColltnDt"] |> parse_data(),
-      fnl_colltn_dt: ocrncs["FnlColltnDt"] |> parse_data(),
+      frst_colltn_dt: ocrncs["FrstColltnDt"] |> parse_date(),
+      fnl_colltn_dt: ocrncs["FnlColltnDt"] |> parse_date(),
       trckg_ind: mndt["TrckgInd"],
-      colltn_amt: get_in(mndt, ["ColltnAmt", :valor]),
+      colltn_amt: get_in(mndt, ["ColltnAmt", :value]),
       adjstmnt_dt_ind: adjstmnt["DtAdjstmntRuleInd"],
-      adjstmnt_amt: get_in(adjstmnt, ["Amt", :valor]),
-      cdtr_nome: get_in(mndt, ["Cdtr", "Nm"]),
+      adjstmnt_amt: get_in(adjstmnt, ["Amt", :value]),
+      cdtr_name: get_in(mndt, ["Cdtr", "Nm"]),
       cdtr_cpf_cnpj: get_in(mndt, ["Cdtr", "Id", "PrvtId", "Othr", "Id"]),
       cdtr_agt_ispb: get_in(mndt, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
       dbtr_cpf_cnpj: get_in(mndt, ["Dbtr", "Id", "PrvtId", "Othr", "Id"]),
-      dbtr_conta_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
-      dbtr_conta_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
+      dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
+      dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
       dbtr_agt_ispb: get_in(mndt, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      ultmt_dbtr_nome: ultmt_dbtr["Nm"],
+      ultmt_dbtr_name: ultmt_dbtr["Nm"],
       ultmt_dbtr_cpf_cnpj: get_in(ultmt_dbtr, ["Id", "PrvtId", "Othr", "Id"]),
       rfrd_doc_nb: get_in(mndt, ["RfrdDoc", "Nb"]),
       rfrd_doc_cdtr_ref: get_in(mndt, ["RfrdDoc", "CdtrRef"]),
       mndt_prcg_dtls:
-        mndt |> get_in(["SplmtryData", "Envlp", "MndtPrcgDtls"]) |> Enum.map(&prcg_de_termo/1)
+        mndt |> get_in(["SplmtryData", "Envlp", "MndtPrcgDtls"]) |> Enum.map(&prcg_from_term/1)
     }
   end
 
-  defp prcg_de_termo(t), do: %{tp: t["MndtPrcgTp"], dt_tm: parse_data_hora(t["PrcgDtTm"])}
+  defp prcg_from_term(t), do: %{tp: t["MndtPrcgTp"], dt_tm: parse_datetime(t["PrcgDtTm"])}
 
-  defp formatar_data_hora(%DateTime{} = dt) do
+  defp format_datetime(%DateTime{} = dt) do
     dt |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
   end
 
-  defp parse_data_hora(nil), do: nil
+  defp parse_datetime(nil), do: nil
 
-  defp parse_data_hora(texto) do
-    {:ok, dt, _offset} = DateTime.from_iso8601(texto)
+  defp parse_datetime(text) do
+    {:ok, dt, _offset} = DateTime.from_iso8601(text)
     dt
   end
 
-  defp parse_data(nil), do: nil
-  defp parse_data(texto), do: Date.from_iso8601!(texto)
+  defp parse_date(nil), do: nil
+  defp parse_date(text), do: Date.from_iso8601!(text)
 end

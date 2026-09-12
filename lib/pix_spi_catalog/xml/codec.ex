@@ -7,34 +7,34 @@ defmodule PixSpiCatalog.Xml.Codec do
   O termo genérico é: valor simples vira string; elemento complexo normal
   vira mapa `%{tag => valor}` (lista quando `max` permite repetição);
   `simpleContent` (valor + atributo, ex. `IntrBkSttlmAmt`) vira
-  `%{valor: ..., atributos: %{tag => valor}}`; `:opaco` (`<Sgntr>`) vira a
+  `%{value: ..., attributes: %{tag => valor}}`; `:opaque` (`<Sgntr>`) vira a
   string do XML interno, sem interpretar.
 
   Validação (pattern/enum/tamanho) acontece no `parse`; o `build` confia no
   termo que recebe.
 
-  `compilar_template/3` + `renderizar/2` são a terceira API do ADR 0003:
-  compila um termo com lacunas (`lacuna/1`) uma vez, e cada renderização
-  só preenche as lacunas — sem percorrer o schema de novo.
+  `compile_template/3` + `render/2` são a terceira API do ADR 0003: compila
+  um termo com lacunas (`gap/1`) uma vez, e cada renderização só preenche
+  as lacunas — sem percorrer o schema de novo.
   """
 
-  import PixSpiCatalog.Xml.Registros
+  import PixSpiCatalog.Xml.Records
 
-  alias PixSpiCatalog.Schema.{Atributo, Elemento, Escolha, TipoComplexo, TipoSimples}
+  alias PixSpiCatalog.Schema.{Attribute, Choice, ComplexType, Element, SimpleType}
 
-  @doc "Parseia um XML contra o schema (a raiz, um `Schema.Elemento`)."
-  @spec parse(Elemento.t(), binary()) :: {:ok, term()} | {:error, String.t()}
-  def parse(%Elemento{} = schema, xml) when is_binary(xml) do
+  @doc "Parseia um XML contra o schema (a raiz, um `Schema.Element`)."
+  @spec parse(Element.t(), binary()) :: {:ok, term()} | {:error, String.t()}
+  def parse(%Element{} = schema, xml) when is_binary(xml) do
     # bytes crus, não codepoints já decodificados: o prólogo declara
     # encoding="UTF-8" e é o próprio xmerl quem decodifica a partir disso.
-    {no, _resto} = :xmerl_scan.string(:binary.bin_to_list(xml))
-    {:ok, extrair_tipo(no, schema.tipo)}
+    {node, _rest} = :xmerl_scan.string(:binary.bin_to_list(xml))
+    {:ok, extract_type(node, schema.type)}
   rescue
     e -> {:error, Exception.message(e)}
   catch
     # XML malformado faz o xmerl sair com exit, não raise — e isso não pode
     # derrubar o processo chamador; é entrada não confiável (PSP), não bug.
-    :exit, motivo -> {:error, inspect(motivo)}
+    :exit, reason -> {:error, inspect(reason)}
   end
 
   @doc """
@@ -43,24 +43,24 @@ defmodule PixSpiCatalog.Xml.Codec do
   `namespace`, quando dado, vira o `xmlns` da tag raiz — namespace é
   declaração XML, não um `xs:attribute` do schema, então não é modelado
   como atributo comum; sem ele, o XML montado não teria como ser
-  redespachado por `Registro.parse/1`.
+  redespachado por `Registry.parse/1`.
   """
-  @spec build(Elemento.t(), term(), String.t() | nil) :: {:ok, binary()} | {:error, String.t()}
-  def build(%Elemento{} = schema, termo, namespace \\ nil) do
-    corpo =
+  @spec build(Element.t(), term(), String.t() | nil) :: {:ok, binary()} | {:error, String.t()}
+  def build(%Element{} = schema, term, namespace \\ nil) do
+    body =
       schema
-      |> construir_elemento(termo)
-      |> injetar_xmlns(schema.tag, namespace)
+      |> build_element(term)
+      |> inject_xmlns(schema.tag, namespace)
 
-    {:ok, ~s(<?xml version="1.0" encoding="UTF-8"?>) <> corpo}
+    {:ok, ~s(<?xml version="1.0" encoding="UTF-8"?>) <> body}
   rescue
     e -> {:error, Exception.message(e)}
   end
 
-  defp injetar_xmlns(corpo, _tag, nil), do: corpo
+  defp inject_xmlns(body, _tag, nil), do: body
 
-  defp injetar_xmlns(corpo, tag, namespace) do
-    String.replace(corpo, "<#{tag}>", ~s(<#{tag} xmlns="#{escapar_atributo(namespace)}">),
+  defp inject_xmlns(body, tag, namespace) do
+    String.replace(body, "<#{tag}>", ~s(<#{tag} xmlns="#{escape_attribute(namespace)}">),
       global: false
     )
   end
@@ -68,14 +68,14 @@ defmodule PixSpiCatalog.Xml.Codec do
   # --- template canônico (ADR 0003) ---
 
   @typedoc "Template compilado: trechos fixos intercalados com lacunas a preencher depois."
-  @type template :: [binary() | {:lacuna, atom()}]
+  @type template :: [binary() | {:gap, atom()}]
 
   @doc """
   Marcador de lacuna: usa no lugar de um valor real, num termo passado para
-  `compilar_template/3`, pra dizer "isso varia, preenche depois".
+  `compile_template/3`, pra dizer "isso varia, preenche depois".
   """
-  @spec lacuna(atom()) :: binary()
-  def lacuna(chave) when is_atom(chave), do: <<0>> <> Atom.to_string(chave) <> <<0>>
+  @spec gap(atom()) :: binary()
+  def gap(key) when is_atom(key), do: <<0>> <> Atom.to_string(key) <> <<0>>
 
   @doc """
   Compila `{schema, termo com lacunas}` num template canônico: monta o XML
@@ -84,98 +84,98 @@ defmodule PixSpiCatalog.Xml.Codec do
   percorrer o schema de novo. Pensado pro caminho quente do simulador: o
   custo de percorrer a árvore é pago uma vez aqui, não a cada mensagem.
   """
-  @spec compilar_template(Elemento.t(), term(), String.t() | nil) ::
+  @spec compile_template(Element.t(), term(), String.t() | nil) ::
           {:ok, template()} | {:error, String.t()}
-  def compilar_template(%Elemento{} = schema, termo_com_lacunas, namespace \\ nil) do
-    with {:ok, xml} <- build(schema, termo_com_lacunas, namespace) do
-      {:ok, fatiar_lacunas(xml)}
+  def compile_template(%Element{} = schema, term_with_gaps, namespace \\ nil) do
+    with {:ok, xml} <- build(schema, term_with_gaps, namespace) do
+      {:ok, split_gaps(xml)}
     end
   end
 
   @doc "Preenche as lacunas de um template já compilado, produzindo o XML final."
-  @spec renderizar(template(), %{atom() => term()}) :: binary()
-  def renderizar(template, campos_variaveis) do
+  @spec render(template(), %{atom() => term()}) :: binary()
+  def render(template, variable_fields) do
     Enum.map_join(template, "", fn
-      {:lacuna, chave} -> campos_variaveis |> Map.fetch!(chave) |> to_string() |> escapar_texto()
-      fixo -> fixo
+      {:gap, key} -> variable_fields |> Map.fetch!(key) |> to_string() |> escape_text()
+      fixed -> fixed
     end)
   end
 
-  @lacuna_regex ~r/\x00([a-zA-Z_][a-zA-Z0-9_]*)\x00/
+  @gap_regex ~r/\x00([a-zA-Z_][a-zA-Z0-9_]*)\x00/
 
-  defp fatiar_lacunas(xml) do
-    @lacuna_regex
+  defp split_gaps(xml) do
+    @gap_regex
     |> Regex.split(xml, include_captures: true)
     |> Enum.reject(&(&1 == ""))
-    |> Enum.map(&segmento/1)
+    |> Enum.map(&segment/1)
   end
 
-  defp segmento(<<0, resto::binary>>),
-    do: {:lacuna, resto |> String.trim_trailing(<<0>>) |> String.to_existing_atom()}
+  defp segment(<<0, rest::binary>>),
+    do: {:gap, rest |> String.trim_trailing(<<0>>) |> String.to_existing_atom()}
 
-  defp segmento(fixo), do: fixo
+  defp segment(fixed), do: fixed
 
   # --- extração (parse) ---
 
-  defp extrair_tipo(_no, :opaco), do: nil
-  defp extrair_tipo(no, %TipoSimples{} = tipo), do: no |> texto_direto() |> validar!(tipo)
+  defp extract_type(_node, :opaque), do: nil
+  defp extract_type(node, %SimpleType{} = type), do: node |> direct_text() |> validate!(type)
 
-  defp extrair_tipo(no, %TipoComplexo{texto: %TipoSimples{} = tipo_texto} = tipo) do
+  defp extract_type(node, %ComplexType{text: %SimpleType{} = text_type} = type) do
     %{
-      valor: no |> texto_direto() |> validar!(tipo_texto),
-      atributos: extrair_atributos(no, tipo.atributos)
+      value: node |> direct_text() |> validate!(text_type),
+      attributes: extract_attributes(node, type.attributes)
     }
   end
 
-  defp extrair_tipo(no, %TipoComplexo{conteudo: itens}) do
-    agrupados = agrupar_por_tag(no)
-    Enum.reduce(itens, %{}, fn item, acc -> Map.merge(acc, extrair_item(item, agrupados)) end)
+  defp extract_type(node, %ComplexType{content: items}) do
+    grouped = group_by_tag(node)
+    Enum.reduce(items, %{}, fn item, acc -> Map.merge(acc, extract_item(item, grouped)) end)
   end
 
-  defp extrair_conteudo_opaco(no),
-    do: no |> xmlElement(:content) |> Enum.map_join("", &serializar_no/1)
+  defp extract_opaque_content(node),
+    do: node |> xmlElement(:content) |> Enum.map_join("", &serialize_node/1)
 
-  defp extrair_item(%Elemento{tipo: :opaco, tag: tag, min: min}, agrupados) do
-    case Map.get(agrupados, tag, []) do
-      [unico] -> %{tag => extrair_conteudo_opaco(unico)}
+  defp extract_item(%Element{type: :opaque, tag: tag, min: min}, grouped) do
+    case Map.get(grouped, tag, []) do
+      [single] -> %{tag => extract_opaque_content(single)}
       [] when min == 0 -> %{}
       [] -> raise "elemento obrigatório ausente: #{tag}"
     end
   end
 
-  defp extrair_item(%Elemento{tag: tag, tipo: tipo, min: min, max: 1}, agrupados) do
-    case Map.get(agrupados, tag, []) do
-      [unico] -> %{tag => extrair_tipo(unico, tipo)}
+  defp extract_item(%Element{tag: tag, type: type, min: min, max: 1}, grouped) do
+    case Map.get(grouped, tag, []) do
+      [single] -> %{tag => extract_type(single, type)}
       [] when min == 0 -> %{}
       [] -> raise "elemento obrigatório ausente: #{tag}"
       _ -> raise "elemento #{tag} apareceu mais de uma vez, mas a cardinalidade máxima é 1"
     end
   end
 
-  defp extrair_item(%Elemento{tag: tag, tipo: tipo, min: min}, agrupados) do
-    filhos = Map.get(agrupados, tag, [])
+  defp extract_item(%Element{tag: tag, type: type, min: min}, grouped) do
+    children = Map.get(grouped, tag, [])
 
-    if length(filhos) < min do
-      raise "elemento #{tag}: esperado ao menos #{min}, vieram #{length(filhos)}"
+    if length(children) < min do
+      raise "elemento #{tag}: esperado ao menos #{min}, vieram #{length(children)}"
     end
 
-    %{tag => Enum.map(filhos, &extrair_tipo(&1, tipo))}
+    %{tag => Enum.map(children, &extract_type(&1, type))}
   end
 
-  defp extrair_item(%Escolha{opcoes: opcoes, min: min}, agrupados) do
-    case melhor_opcao(opcoes, &Map.has_key?(agrupados, &1)) do
+  defp extract_item(%Choice{options: options, min: min}, grouped) do
+    case best_option(options, &Map.has_key?(grouped, &1)) do
       nil when min == 0 ->
         %{}
 
       nil ->
-        raise "nenhuma opção da escolha está presente: #{inspect(Enum.map(opcoes, &tags_da_opcao/1))}"
+        raise "nenhuma opção da escolha está presente: #{inspect(Enum.map(options, &option_tags/1))}"
 
-      opcao ->
-        extrair_opcao(opcao, agrupados)
+      option ->
+        extract_option(option, grouped)
     end
   end
 
-  # Uma opção de `Escolha` é ou 1 elemento, ou (quando vem de `xs:group ref=`
+  # Uma opção de `Choice` é ou 1 elemento, ou (quando vem de `xs:group ref=`
   # dentro de um `xs:choice` com mais de 1 elemento no grupo) a lista de
   # elementos do grupo inteiro. Duas opções de grupo podem compartilhar tag
   # (ex. reda.022: `ReqdModContato` e `ReqdModDiretor` têm PhneNb/EmailAdr/
@@ -183,161 +183,161 @@ defmodule PixSpiCatalog.Xml.Codec do
   # opção com MAIS tags batendo, não a primeira com alguma batendo, senão um
   # exemplar do ramo com o campo distintivo ausente escolhe o ramo errado e
   # perde esse campo.
-  defp melhor_opcao(opcoes, chave_presente?) do
-    opcoes
-    |> Enum.map(&{&1, contagem_presente(&1, chave_presente?)})
-    |> Enum.filter(fn {_opcao, contagem} -> contagem > 0 end)
-    |> Enum.max_by(fn {_opcao, contagem} -> contagem end, fn -> {nil, 0} end)
+  defp best_option(options, key_present?) do
+    options
+    |> Enum.map(&{&1, present_count(&1, key_present?)})
+    |> Enum.filter(fn {_option, count} -> count > 0 end)
+    |> Enum.max_by(fn {_option, count} -> count end, fn -> {nil, 0} end)
     |> elem(0)
   end
 
-  defp contagem_presente(%Elemento{tag: tag}, chave_presente?),
-    do: if(chave_presente?.(tag), do: 1, else: 0)
+  defp present_count(%Element{tag: tag}, key_present?),
+    do: if(key_present?.(tag), do: 1, else: 0)
 
-  defp contagem_presente(membros, chave_presente?) when is_list(membros),
-    do: Enum.count(membros, &chave_presente?.(&1.tag))
+  defp present_count(members, key_present?) when is_list(members),
+    do: Enum.count(members, &key_present?.(&1.tag))
 
-  defp tags_da_opcao(%Elemento{tag: tag}), do: tag
-  defp tags_da_opcao(membros) when is_list(membros), do: Enum.map(membros, & &1.tag)
+  defp option_tags(%Element{tag: tag}), do: tag
+  defp option_tags(members) when is_list(members), do: Enum.map(members, & &1.tag)
 
-  defp extrair_opcao(%Elemento{} = elemento, agrupados), do: extrair_item(elemento, agrupados)
+  defp extract_option(%Element{} = element, grouped), do: extract_item(element, grouped)
 
-  defp extrair_opcao(membros, agrupados) when is_list(membros) do
-    Enum.reduce(membros, %{}, fn item, acc -> Map.merge(acc, extrair_item(item, agrupados)) end)
+  defp extract_option(members, grouped) when is_list(members) do
+    Enum.reduce(members, %{}, fn item, acc -> Map.merge(acc, extract_item(item, grouped)) end)
   end
 
-  defp agrupar_por_tag(no) do
-    no
+  defp group_by_tag(node) do
+    node
     |> xmlElement(:content)
     |> Enum.filter(&(is_tuple(&1) and elem(&1, 0) == :xmlElement))
     |> Enum.group_by(&(&1 |> xmlElement(:name) |> Atom.to_string()))
   end
 
-  defp extrair_atributos(no, atributos_schema) do
-    brutos = xmlElement(no, :attributes)
+  defp extract_attributes(node, schema_attributes) do
+    raw = xmlElement(node, :attributes)
 
-    Enum.reduce(atributos_schema, %{}, fn %Atributo{tag: tag, tipo: tipo}, acc ->
-      case valor_atributo(brutos, tag) do
+    Enum.reduce(schema_attributes, %{}, fn %Attribute{tag: tag, type: type}, acc ->
+      case attribute_value(raw, tag) do
         nil -> acc
-        valor -> Map.put(acc, tag, validar!(valor, tipo))
+        value -> Map.put(acc, tag, validate!(value, type))
       end
     end)
   end
 
-  defp valor_atributo(brutos, tag) do
-    Enum.find_value(brutos, fn a ->
+  defp attribute_value(raw, tag) do
+    Enum.find_value(raw, fn a ->
       if Atom.to_string(xmlAttribute(a, :name)) == tag,
         do: a |> xmlAttribute(:value) |> List.to_string()
     end)
   end
 
-  defp texto_direto(no) do
-    no
+  defp direct_text(node) do
+    node
     |> xmlElement(:content)
     |> Enum.filter(&(is_tuple(&1) and elem(&1, 0) == :xmlText))
     |> Enum.map_join("", fn t -> t |> xmlText(:value) |> List.to_string() end)
     |> String.trim()
   end
 
-  defp validar!(valor, %TipoSimples{} = tipo) do
-    if tipo.pattern && not Regex.match?(regex_ancorado(tipo.pattern), valor) do
-      raise "valor #{inspect(valor)} não bate com o padrão #{tipo.pattern}"
+  defp validate!(value, %SimpleType{} = type) do
+    if type.pattern && not Regex.match?(anchored_regex(type.pattern), value) do
+      raise "valor #{inspect(value)} não bate com o padrão #{type.pattern}"
     end
 
-    if tipo.enum && valor not in tipo.enum do
-      raise "valor #{inspect(valor)} não está entre #{inspect(tipo.enum)}"
+    if type.enum && value not in type.enum do
+      raise "valor #{inspect(value)} não está entre #{inspect(type.enum)}"
     end
 
-    if tipo.max_length && String.length(valor) > tipo.max_length do
-      raise "valor #{inspect(valor)} excede o tamanho máximo #{tipo.max_length}"
+    if type.max_length && String.length(value) > type.max_length do
+      raise "valor #{inspect(value)} excede o tamanho máximo #{type.max_length}"
     end
 
-    if tipo.min_length && String.length(valor) < tipo.min_length do
-      raise "valor #{inspect(valor)} é menor que o tamanho mínimo #{tipo.min_length}"
+    if type.min_length && String.length(value) < type.min_length do
+      raise "valor #{inspect(value)} é menor que o tamanho mínimo #{type.min_length}"
     end
 
-    valor
+    value
   end
 
   # xs:pattern casa contra o valor inteiro, não uma substring — Regex.match?
   # do Elixir não ancora sozinho.
-  defp regex_ancorado(pattern), do: Regex.compile!("^(?:" <> pattern <> ")$")
+  defp anchored_regex(pattern), do: Regex.compile!("^(?:" <> pattern <> ")$")
 
-  defp serializar_no(no) do
-    case elem(no, 0) do
+  defp serialize_node(node) do
+    case elem(node, 0) do
       :xmlText ->
-        no |> xmlText(:value) |> List.to_string()
+        node |> xmlText(:value) |> List.to_string()
 
       :xmlElement ->
-        tag = no |> xmlElement(:name) |> Atom.to_string()
-        atributos = no |> xmlElement(:attributes) |> Enum.map_join("", &serializar_atributo/1)
-        filhos = no |> xmlElement(:content) |> Enum.map_join("", &serializar_no/1)
-        "<#{tag}#{atributos}>#{filhos}</#{tag}>"
+        tag = node |> xmlElement(:name) |> Atom.to_string()
+        attributes = node |> xmlElement(:attributes) |> Enum.map_join("", &serialize_attribute/1)
+        children = node |> xmlElement(:content) |> Enum.map_join("", &serialize_node/1)
+        "<#{tag}#{attributes}>#{children}</#{tag}>"
     end
   end
 
-  defp serializar_atributo(a) do
-    nome = xmlAttribute(a, :name)
-    valor = a |> xmlAttribute(:value) |> List.to_string() |> escapar_atributo()
-    ~s( #{nome}="#{valor}")
+  defp serialize_attribute(a) do
+    name = xmlAttribute(a, :name)
+    value = a |> xmlAttribute(:value) |> List.to_string() |> escape_attribute()
+    ~s( #{name}="#{value}")
   end
 
   # --- construção (build) ---
 
-  defp construir_elemento(%Elemento{tag: tag, tipo: tipo}, termo) do
-    "<#{tag}#{construir_atributos(tipo, termo)}>#{construir_conteudo(tipo, termo)}</#{tag}>"
+  defp build_element(%Element{tag: tag, type: type}, term) do
+    "<#{tag}#{build_attributes(type, term)}>#{build_content(type, term)}</#{tag}>"
   end
 
-  defp construir_atributos(%TipoComplexo{atributos: atributos}, termo) when atributos != [] do
-    mapa = Map.get(termo, :atributos, %{})
+  defp build_attributes(%ComplexType{attributes: attributes}, term) when attributes != [] do
+    map = Map.get(term, :attributes, %{})
 
-    Enum.map_join(atributos, "", fn %Atributo{tag: tag} ->
-      ~s( #{tag}="#{mapa |> Map.fetch!(tag) |> to_string() |> escapar_atributo()}")
+    Enum.map_join(attributes, "", fn %Attribute{tag: tag} ->
+      ~s( #{tag}="#{map |> Map.fetch!(tag) |> to_string() |> escape_attribute()}")
     end)
   end
 
-  defp construir_atributos(_tipo, _termo), do: ""
+  defp build_attributes(_type, _term), do: ""
 
-  defp construir_conteudo(:opaco, termo), do: termo || ""
-  defp construir_conteudo(%TipoSimples{}, termo), do: escapar_texto(to_string(termo))
+  defp build_content(:opaque, term), do: term || ""
+  defp build_content(%SimpleType{}, term), do: escape_text(to_string(term))
 
-  defp construir_conteudo(%TipoComplexo{texto: %TipoSimples{}}, termo) do
-    escapar_texto(to_string(Map.fetch!(termo, :valor)))
+  defp build_content(%ComplexType{text: %SimpleType{}}, term) do
+    escape_text(to_string(Map.fetch!(term, :value)))
   end
 
-  defp construir_conteudo(%TipoComplexo{conteudo: itens}, termo) do
-    Enum.map_join(itens, "", &construir_item(&1, termo))
+  defp build_content(%ComplexType{content: items}, term) do
+    Enum.map_join(items, "", &build_item(&1, term))
   end
 
-  defp construir_item(%Elemento{tag: tag, max: 1} = elemento, termo) do
-    case Map.get(termo, tag) do
+  defp build_item(%Element{tag: tag, max: 1} = element, term) do
+    case Map.get(term, tag) do
       nil -> ""
-      valor -> construir_elemento(elemento, valor)
+      value -> build_element(element, value)
     end
   end
 
-  defp construir_item(%Elemento{tag: tag} = elemento, termo) do
-    termo |> Map.get(tag, []) |> Enum.map_join("", &construir_elemento(elemento, &1))
+  defp build_item(%Element{tag: tag} = element, term) do
+    term |> Map.get(tag, []) |> Enum.map_join("", &build_element(element, &1))
   end
 
-  defp construir_item(%Escolha{opcoes: opcoes}, termo) do
-    case melhor_opcao(opcoes, &Map.has_key?(termo, &1)) do
+  defp build_item(%Choice{options: options}, term) do
+    case best_option(options, &Map.has_key?(term, &1)) do
       nil -> ""
-      opcao -> construir_opcao(opcao, termo)
+      option -> build_option(option, term)
     end
   end
 
-  defp construir_opcao(%Elemento{} = elemento, termo), do: construir_item(elemento, termo)
+  defp build_option(%Element{} = element, term), do: build_item(element, term)
 
-  defp construir_opcao(membros, termo) when is_list(membros),
-    do: Enum.map_join(membros, "", &construir_item(&1, termo))
+  defp build_option(members, term) when is_list(members),
+    do: Enum.map_join(members, "", &build_item(&1, term))
 
-  defp escapar_texto(texto) do
-    texto
+  defp escape_text(text) do
+    text
     |> String.replace("&", "&amp;")
     |> String.replace("<", "&lt;")
     |> String.replace(">", "&gt;")
   end
 
-  defp escapar_atributo(texto), do: texto |> escapar_texto() |> String.replace(~s("), "&quot;")
+  defp escape_attribute(text), do: text |> escape_text() |> String.replace(~s("), "&quot;")
 end

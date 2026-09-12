@@ -2,26 +2,26 @@ defmodule PixSpiCatalog.Reda022 do
   @moduledoc """
   Representação de domínio do reda.022 (solicitação de alteração de
   cadastro de participante), versão 1.4 — a mensagem cujo schema real
-  exigiu corrigir o `Compilador` (ver ADR/issue #27): `ReqdMod` é um
+  exigiu corrigir o `Compiler` (ver ADR/issue #27): `ReqdMod` é um
   `xs:choice` entre `CtctDtls` (ela mesma outra escolha, entre os grupos
   `ReqdModContato` e `ReqdModDiretor`, que compartilham a maioria das
   tags — só `Nm` distingue), `TechAdr` e `MktSpcfcAttr`.
 
   `Mod` é `max: ilimitado` de verdade — uma mensagem pode carregar várias
-  alterações de uma vez — modelado como lista de mapas com `:tipo`
-  (`:contato`, `:diretor`, `:tech_adr` ou `:mkt_spcfc_attr`) dizendo qual
+  alterações de uma vez — modelado como lista de mapas com `:type`
+  (`:contact`, `:director`, `:tech_adr` ou `:mkt_spcfc_attr`) dizendo qual
   variante de `ReqdMod` é. `ScpIndctn` (enum de valor único `"INSE"`) e
   `MktSpcfcAttr.Nm` (enum de valor único `"CPFDIRETOR"`) ficam fixos.
   """
 
   alias PixSpiCatalog.AppHdr
-  alias PixSpiCatalog.Gerado.Reda022.V1_4
+  alias PixSpiCatalog.Generated.Reda022.V1_4
 
-  @type versao :: :v1_4
+  @type version :: :v1_4
 
-  @type modificacao ::
+  @type modification ::
           %{
-            tipo: :contato,
+            type: :contact,
             phne_nb: String.t(),
             mob_nb: String.t() | nil,
             fax_nb: String.t() | nil,
@@ -29,90 +29,90 @@ defmodule PixSpiCatalog.Reda022 do
             rspnsblty: String.t()
           }
           | %{
-              tipo: :diretor,
+              type: :director,
               nm: String.t(),
               phne_nb: String.t(),
               mob_nb: String.t() | nil,
               email_adr: String.t(),
               rspnsblty: String.t()
             }
-          | %{tipo: :tech_adr, tech_adr: String.t()}
-          | %{tipo: :mkt_spcfc_attr, val: String.t()}
+          | %{type: :tech_adr, tech_adr: String.t()}
+          | %{type: :mkt_spcfc_attr, val: String.t()}
 
-  defstruct [:msg_id, :criado_em, :ispb, mod: []]
+  defstruct [:msg_id, :created_at, :ispb, mod: []]
 
   @type t :: %__MODULE__{
           msg_id: String.t(),
-          criado_em: DateTime.t(),
+          created_at: DateTime.t(),
           ispb: String.t(),
-          mod: [modificacao()]
+          mod: [modification()]
         }
 
-  @campos_obrigatorios [:msg_id, :criado_em, :ispb]
+  @required_fields [:msg_id, :created_at, :ispb]
 
-  @modulo_por_versao %{v1_4: V1_4}
-  @versao_por_modulo Map.new(@modulo_por_versao, fn {v, m} -> {m, v} end)
+  @module_by_version %{v1_4: V1_4}
+  @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec build(t(), AppHdr.t(), versao()) :: {:ok, binary()} | {:error, String.t()}
-  def build(%__MODULE__{} = mensagem, %AppHdr{} = cabecalho, versao) when versao in [:v1_4] do
-    with :ok <- validar_obrigatorios(mensagem) do
-      modulo = Map.fetch!(@modulo_por_versao, versao)
+  @spec build(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
+  def build(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_4] do
+    with :ok <- validate_required(message) do
+      module = Map.fetch!(@module_by_version, version)
 
-      termo = %{
-        "AppHdr" => AppHdr.termo(cabecalho, modulo.msg_def_idr()),
-        "Document" => termo_document(mensagem)
+      term = %{
+        "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
+        "Document" => document_term(message)
       }
 
-      with {:ok, xml} <- modulo.build(termo) do
-        confirmar(modulo, xml)
+      with {:ok, xml} <- module.build(term) do
+        confirm(module, xml)
       end
     end
   end
 
   @doc "Parseia um XML de reda.022 de volta para a struct."
-  @spec parse(binary()) :: {:ok, t(), versao()} | {:error, term()}
+  @spec parse(binary()) :: {:ok, t(), version()} | {:error, term()}
   def parse(xml) when is_binary(xml) do
-    case PixSpiCatalog.Registro.parse(xml) do
-      {:ok, modulo, termo} ->
-        case Map.fetch(@versao_por_modulo, modulo) do
-          {:ok, versao} -> {:ok, struct_de_termo(termo), versao}
-          :error -> {:error, {:nao_e_reda022, modulo.msg_def_idr()}}
+    case PixSpiCatalog.Registry.parse(xml) do
+      {:ok, module, term} ->
+        case Map.fetch(@version_by_module, module) do
+          {:ok, version} -> {:ok, struct_from_term(term), version}
+          :error -> {:error, {:not_reda022, module.msg_def_idr()}}
         end
 
-      erro ->
-        erro
+      error ->
+        error
     end
   end
 
-  defp confirmar(modulo, xml) do
-    case modulo.parse(xml) do
-      {:ok, _termo} -> {:ok, xml}
-      {:error, motivo} -> {:error, motivo}
+  defp confirm(module, xml) do
+    case module.parse(xml) do
+      {:ok, _term} -> {:ok, xml}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp validar_obrigatorios(mensagem) do
-    faltando = Enum.filter(@campos_obrigatorios, &(Map.get(mensagem, &1) in [nil, ""]))
+  defp validate_required(message) do
+    missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
-    if faltando == [],
+    if missing == [],
       do: :ok,
-      else: {:error, "campos obrigatórios ausentes: #{inspect(faltando)}"}
+      else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp termo_document(m) do
+  defp document_term(m) do
     %{
       "PtyModReq" => %{
-        "MsgHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => formatar_data_hora(m.criado_em)},
+        "MsgHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => format_datetime(m.created_at)},
         "SysPtyId" => %{"Id" => %{"Id" => %{"PrtryId" => %{"Id" => m.ispb, "Issr" => "BCB"}}}},
-        "Mod" => Enum.map(m.mod, &termo_mod/1)
+        "Mod" => Enum.map(m.mod, &mod_term/1)
       }
     }
   end
 
-  defp termo_mod(m), do: %{"ScpIndctn" => "INSE", "ReqdMod" => termo_reqd_mod(m)}
+  defp mod_term(m), do: %{"ScpIndctn" => "INSE", "ReqdMod" => reqd_mod_term(m)}
 
-  defp termo_reqd_mod(%{tipo: :contato} = m) do
+  defp reqd_mod_term(%{type: :contact} = m) do
     %{
       "CtctDtls" => %{
         "PhneNb" => m.phne_nb,
@@ -124,7 +124,7 @@ defmodule PixSpiCatalog.Reda022 do
     }
   end
 
-  defp termo_reqd_mod(%{tipo: :diretor} = m) do
+  defp reqd_mod_term(%{type: :director} = m) do
     %{
       "CtctDtls" => %{
         "Nm" => m.nm,
@@ -136,35 +136,35 @@ defmodule PixSpiCatalog.Reda022 do
     }
   end
 
-  defp termo_reqd_mod(%{tipo: :tech_adr} = m), do: %{"TechAdr" => %{"TechAdr" => m.tech_adr}}
+  defp reqd_mod_term(%{type: :tech_adr} = m), do: %{"TechAdr" => %{"TechAdr" => m.tech_adr}}
 
-  defp termo_reqd_mod(%{tipo: :mkt_spcfc_attr} = m),
+  defp reqd_mod_term(%{type: :mkt_spcfc_attr} = m),
     do: %{"MktSpcfcAttr" => %{"Nm" => "CPFDIRETOR", "Val" => m.val}}
 
-  defp struct_de_termo(termo) do
-    doc = get_in(termo, ["Document", "PtyModReq"])
+  defp struct_from_term(term) do
+    doc = get_in(term, ["Document", "PtyModReq"])
 
     %__MODULE__{
       msg_id: get_in(doc, ["MsgHdr", "MsgId"]),
-      criado_em: parse_data_hora(get_in(doc, ["MsgHdr", "CreDtTm"])),
+      created_at: parse_datetime(get_in(doc, ["MsgHdr", "CreDtTm"])),
       ispb: get_in(doc, ["SysPtyId", "Id", "Id", "PrtryId", "Id"]),
-      mod: doc |> Map.get("Mod", []) |> Enum.map(&modificacao_de_termo/1)
+      mod: doc |> Map.get("Mod", []) |> Enum.map(&modification_from_term/1)
     }
   end
 
-  defp modificacao_de_termo(t) do
+  defp modification_from_term(t) do
     reqd = t["ReqdMod"]
 
     cond do
-      ctct = reqd["CtctDtls"] -> ctct_de_termo(ctct)
-      tech = reqd["TechAdr"] -> %{tipo: :tech_adr, tech_adr: tech["TechAdr"]}
-      attr = reqd["MktSpcfcAttr"] -> %{tipo: :mkt_spcfc_attr, val: attr["Val"]}
+      ctct = reqd["CtctDtls"] -> contact_from_term(ctct)
+      tech = reqd["TechAdr"] -> %{type: :tech_adr, tech_adr: tech["TechAdr"]}
+      attr = reqd["MktSpcfcAttr"] -> %{type: :mkt_spcfc_attr, val: attr["Val"]}
     end
   end
 
-  defp ctct_de_termo(%{"Nm" => nm} = ctct) when nm != nil do
+  defp contact_from_term(%{"Nm" => nm} = ctct) when nm != nil do
     %{
-      tipo: :diretor,
+      type: :director,
       nm: nm,
       phne_nb: ctct["PhneNb"],
       mob_nb: ctct["MobNb"],
@@ -173,9 +173,9 @@ defmodule PixSpiCatalog.Reda022 do
     }
   end
 
-  defp ctct_de_termo(ctct) do
+  defp contact_from_term(ctct) do
     %{
-      tipo: :contato,
+      type: :contact,
       phne_nb: ctct["PhneNb"],
       mob_nb: ctct["MobNb"],
       fax_nb: ctct["FaxNb"],
@@ -184,14 +184,14 @@ defmodule PixSpiCatalog.Reda022 do
     }
   end
 
-  defp formatar_data_hora(%DateTime{} = dt) do
+  defp format_datetime(%DateTime{} = dt) do
     dt |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
   end
 
-  defp parse_data_hora(nil), do: nil
+  defp parse_datetime(nil), do: nil
 
-  defp parse_data_hora(texto) do
-    {:ok, dt, _offset} = DateTime.from_iso8601(texto)
+  defp parse_datetime(text) do
+    {:ok, dt, _offset} = DateTime.from_iso8601(text)
     dt
   end
 end

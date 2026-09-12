@@ -4,7 +4,7 @@
       name: "default",
       files: %{
         included: ["lib/", "test/"],
-        excluded: ["lib/pix_spi_catalog/gerado/"]
+        excluded: ["lib/pix_spi_catalog/generated/"]
       },
       strict: true,
       checks: %{

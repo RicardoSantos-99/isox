@@ -13,127 +13,127 @@ defmodule PixSpiCatalog.Camt053 do
   """
 
   alias PixSpiCatalog.AppHdr
-  alias PixSpiCatalog.Gerado.Camt053.V1_4
+  alias PixSpiCatalog.Generated.Camt053.V1_4
 
-  @type versao :: :v1_4
+  @type version :: :v1_4
 
-  defstruct [:msg_id, :criado_em, :stmt_id, :acct_ispb, saldos: []]
+  defstruct [:msg_id, :created_at, :stmt_id, :acct_ispb, balances: []]
 
-  @type saldo :: %{tp_prtry: String.t(), valor: String.t() | number(), dt_tm: DateTime.t()}
+  @type saldo :: %{tp_prtry: String.t(), value: String.t() | number(), dt_tm: DateTime.t()}
 
   @type t :: %__MODULE__{
           msg_id: String.t(),
-          criado_em: DateTime.t(),
+          created_at: DateTime.t(),
           stmt_id: String.t(),
           acct_ispb: String.t(),
-          saldos: [saldo()]
+          balances: [saldo()]
         }
 
-  @campos_obrigatorios [:msg_id, :criado_em, :stmt_id, :acct_ispb]
+  @required_fields [:msg_id, :created_at, :stmt_id, :acct_ispb]
 
-  @modulo_por_versao %{v1_4: V1_4}
-  @versao_por_modulo Map.new(@modulo_por_versao, fn {v, m} -> {m, v} end)
+  @module_by_version %{v1_4: V1_4}
+  @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec build(t(), AppHdr.t(), versao()) :: {:ok, binary()} | {:error, String.t()}
-  def build(%__MODULE__{} = mensagem, %AppHdr{} = cabecalho, versao) when versao in [:v1_4] do
-    with :ok <- validar_obrigatorios(mensagem) do
-      modulo = Map.fetch!(@modulo_por_versao, versao)
+  @spec build(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
+  def build(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_4] do
+    with :ok <- validate_required(message) do
+      module = Map.fetch!(@module_by_version, version)
 
-      termo = %{
-        "AppHdr" => AppHdr.termo(cabecalho, modulo.msg_def_idr()),
-        "Document" => termo_document(mensagem)
+      term = %{
+        "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
+        "Document" => document_term(message)
       }
 
-      with {:ok, xml} <- modulo.build(termo) do
-        confirmar(modulo, xml)
+      with {:ok, xml} <- module.build(term) do
+        confirm(module, xml)
       end
     end
   end
 
   @doc "Parseia um XML de camt.053 de volta para a struct."
-  @spec parse(binary()) :: {:ok, t(), versao()} | {:error, term()}
+  @spec parse(binary()) :: {:ok, t(), version()} | {:error, term()}
   def parse(xml) when is_binary(xml) do
-    case PixSpiCatalog.Registro.parse(xml) do
-      {:ok, modulo, termo} ->
-        case Map.fetch(@versao_por_modulo, modulo) do
-          {:ok, versao} -> {:ok, struct_de_termo(termo), versao}
-          :error -> {:error, {:nao_e_camt053, modulo.msg_def_idr()}}
+    case PixSpiCatalog.Registry.parse(xml) do
+      {:ok, module, term} ->
+        case Map.fetch(@version_by_module, module) do
+          {:ok, version} -> {:ok, struct_from_term(term), version}
+          :error -> {:error, {:not_camt053, module.msg_def_idr()}}
         end
 
-      erro ->
-        erro
+      error ->
+        error
     end
   end
 
-  defp confirmar(modulo, xml) do
-    case modulo.parse(xml) do
-      {:ok, _termo} -> {:ok, xml}
-      {:error, motivo} -> {:error, motivo}
+  defp confirm(module, xml) do
+    case module.parse(xml) do
+      {:ok, _term} -> {:ok, xml}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp validar_obrigatorios(mensagem) do
-    faltando = Enum.filter(@campos_obrigatorios, &(Map.get(mensagem, &1) in [nil, ""]))
+  defp validate_required(message) do
+    missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
-    if faltando == [],
+    if missing == [],
       do: :ok,
-      else: {:error, "campos obrigatórios ausentes: #{inspect(faltando)}"}
+      else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp termo_document(m) do
+  defp document_term(m) do
     %{
       "BkToCstmrStmt" => %{
-        "GrpHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => formatar_data_hora(m.criado_em)},
+        "GrpHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => format_datetime(m.created_at)},
         "Stmt" => [
           %{
             "Id" => m.stmt_id,
             "Acct" => %{"Id" => %{"Othr" => %{"Id" => m.acct_ispb}}},
-            "Bal" => Enum.map(m.saldos, &termo_saldo/1)
+            "Bal" => Enum.map(m.balances, &balance_term/1)
           }
         ]
       }
     }
   end
 
-  defp termo_saldo(s) do
+  defp balance_term(s) do
     %{
       "Tp" => %{"CdOrPrtry" => %{"Prtry" => s.tp_prtry}},
-      "Amt" => %{valor: to_string(s.valor), atributos: %{"Ccy" => "BRL"}},
+      "Amt" => %{value: to_string(s.value), attributes: %{"Ccy" => "BRL"}},
       "CdtDbtInd" => "CRDT",
-      "Dt" => %{"DtTm" => formatar_data_hora(s.dt_tm)}
+      "Dt" => %{"DtTm" => format_datetime(s.dt_tm)}
     }
   end
 
-  defp struct_de_termo(termo) do
-    doc = get_in(termo, ["Document", "BkToCstmrStmt"])
+  defp struct_from_term(term) do
+    doc = get_in(term, ["Document", "BkToCstmrStmt"])
     [stmt] = doc["Stmt"]
 
     %__MODULE__{
       msg_id: get_in(doc, ["GrpHdr", "MsgId"]),
-      criado_em: parse_data_hora(get_in(doc, ["GrpHdr", "CreDtTm"])),
+      created_at: parse_datetime(get_in(doc, ["GrpHdr", "CreDtTm"])),
       stmt_id: stmt["Id"],
       acct_ispb: get_in(stmt, ["Acct", "Id", "Othr", "Id"]),
-      saldos: stmt |> Map.get("Bal", []) |> Enum.map(&saldo_de_termo/1)
+      balances: stmt |> Map.get("Bal", []) |> Enum.map(&balance_from_term/1)
     }
   end
 
-  defp saldo_de_termo(t) do
+  defp balance_from_term(t) do
     %{
       tp_prtry: get_in(t, ["Tp", "CdOrPrtry", "Prtry"]),
-      valor: get_in(t, ["Amt", :valor]),
-      dt_tm: get_in(t, ["Dt", "DtTm"]) |> parse_data_hora()
+      value: get_in(t, ["Amt", :value]),
+      dt_tm: get_in(t, ["Dt", "DtTm"]) |> parse_datetime()
     }
   end
 
-  defp formatar_data_hora(%DateTime{} = dt) do
+  defp format_datetime(%DateTime{} = dt) do
     dt |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
   end
 
-  defp parse_data_hora(nil), do: nil
+  defp parse_datetime(nil), do: nil
 
-  defp parse_data_hora(texto) do
-    {:ok, dt, _offset} = DateTime.from_iso8601(texto)
+  defp parse_datetime(text) do
+    {:ok, dt, _offset} = DateTime.from_iso8601(text)
     dt
   end
 end

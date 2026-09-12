@@ -3,21 +3,21 @@ defmodule Mix.Tasks.Catalog.Gen do
 
   @moduledoc """
   Lê todos os `.xsd` de mensagem em `--xsd-dir` (exceto `xmldsig`, que não é
-  mensagem) e gera, em `--out`, um módulo `PixSpiCatalog.Gerado.<Mensagem>.<Versao>`
-  por arquivo, mais `PixSpiCatalog.Gerado.Head001` (o BAH, compartilhado —
+  mensagem) e gera, em `--out`, um módulo `PixSpiCatalog.Generated.<Mensagem>.<Versao>`
+  por arquivo, mais `PixSpiCatalog.Generated.Head001` (o BAH, compartilhado —
   ADR 0004).
 
   Não redistribui XSD nenhum: só lê do caminho informado, nunca de um
   arquivo versionado neste repositório (ADR 0009).
 
       mix catalog.gen --xsd-dir /caminho/para/catalogo_spi/v5.13.1/xsd \\
-                      --out lib/pix_spi_catalog/gerado
+                      --out lib/pix_spi_catalog/generated
   """
 
   use Mix.Task
 
-  alias PixSpiCatalog.Gerador
-  alias PixSpiCatalog.Xsd.{Compilador, Leitor}
+  alias PixSpiCatalog.Generator
+  alias PixSpiCatalog.Xsd.{Compiler, Reader}
 
   @impl Mix.Task
   def run(args) do
@@ -25,47 +25,47 @@ defmodule Mix.Tasks.Catalog.Gen do
     xsd_dir = Keyword.fetch!(opts, :xsd_dir)
     out = Keyword.fetch!(opts, :out)
 
-    arquivos =
+    files =
       xsd_dir
       |> Path.join("*.xsd")
       |> Path.wildcard()
       |> Enum.reject(&(Path.basename(&1) =~ "xmldsig"))
       |> Enum.sort()
 
-    if arquivos == [] do
+    if files == [] do
       Mix.raise("Nenhum .xsd de mensagem encontrado em #{xsd_dir}")
     end
 
-    gerar_head001(hd(arquivos), out)
-    Enum.each(arquivos, &gerar_mensagem(&1, out))
+    generate_head001(hd(files), out)
+    Enum.each(files, &generate_message(&1, out))
 
-    Mix.shell().info("#{length(arquivos)} mensagens geradas em #{out}")
+    Mix.shell().info("#{length(files)} mensagens geradas em #{out}")
   end
 
-  defp gerar_head001(arquivo_referencia, out) do
-    lido = Leitor.ler(arquivo_referencia)
-    {:complexo, no_head} = Map.fetch!(lido.definicoes, "SPI.head.001.001.01")
-    tipo = Compilador.resolver_complexo(no_head, lido.definicoes)
+  defp generate_head001(reference_file, out) do
+    read_result = Reader.read(reference_file)
+    {:complex_type, head_node} = Map.fetch!(read_result.definitions, "SPI.head.001.001.01")
+    type = Compiler.resolve_complex_type(head_node, read_result.definitions)
 
-    escrever(Path.join(out, "head001.ex"), Gerador.fonte_head001(tipo))
+    write(Path.join(out, "head001.ex"), Generator.head001_source(type))
   end
 
-  defp gerar_mensagem(caminho, out) do
-    nome_arquivo = caminho |> Path.basename(".xsd")
-    {modulo, caminho_relativo} = Gerador.nomes(nome_arquivo)
+  defp generate_message(path, out) do
+    filename = path |> Path.basename(".xsd")
+    {module, relative_path} = Generator.names(filename)
 
-    lido = Leitor.ler(caminho)
-    raiz = Compilador.resolver_raiz(lido)
+    read_result = Reader.read(path)
+    root = Compiler.resolve_root(read_result)
 
     # o MsgDefIdr do catálogo é literalmente o nome do arquivo, sem a extensão
-    fonte = Gerador.fonte_mensagem(modulo, raiz, lido.namespace, nome_arquivo)
-    escrever(Path.join(out, caminho_relativo), fonte)
+    source = Generator.message_source(module, root, read_result.namespace, filename)
+    write(Path.join(out, relative_path), source)
   end
 
-  defp escrever(caminho, fonte) do
-    File.mkdir_p!(Path.dirname(caminho))
-    formatado = fonte |> Code.format_string!() |> IO.iodata_to_binary()
-    File.write!(caminho, formatado <> "\n")
-    Mix.shell().info("  #{caminho}")
+  defp write(path, source) do
+    File.mkdir_p!(Path.dirname(path))
+    formatted = source |> Code.format_string!() |> IO.iodata_to_binary()
+    File.write!(path, formatted <> "\n")
+    Mix.shell().info("  #{path}")
   end
 end

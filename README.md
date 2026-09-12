@@ -9,7 +9,7 @@ Os XSDs não são redistribuídos aqui. Para regerar os schemas:
 
 ```bash
 mix catalog.gen --xsd-dir /caminho/para/docs/bacen/catalogo_spi/v5.13.1/xsd \
-                --out lib/pix_spi_catalog/gerado
+                --out lib/pix_spi_catalog/generated
 ```
 
 ## Uso

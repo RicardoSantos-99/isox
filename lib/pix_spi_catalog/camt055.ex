@@ -7,13 +7,13 @@ defmodule PixSpiCatalog.Camt055 do
   """
 
   alias PixSpiCatalog.AppHdr
-  alias PixSpiCatalog.Gerado.Camt055.V1_1
+  alias PixSpiCatalog.Generated.Camt055.V1_1
 
-  @type versao :: :v1_1
+  @type version :: :v1_1
 
   defstruct [
     :assgnmt_id,
-    :criado_em,
+    :created_at,
     :assgnr_ispb,
     :assgne_ispb,
     :pmt_cxl_id,
@@ -27,7 +27,7 @@ defmodule PixSpiCatalog.Camt055 do
 
   @type t :: %__MODULE__{
           assgnmt_id: String.t(),
-          criado_em: DateTime.t(),
+          created_at: DateTime.t(),
           assgnr_ispb: String.t(),
           assgne_ispb: String.t(),
           pmt_cxl_id: String.t(),
@@ -39,9 +39,9 @@ defmodule PixSpiCatalog.Camt055 do
           prcg_dt_tm: DateTime.t()
         }
 
-  @campos_obrigatorios [
+  @required_fields [
     :assgnmt_id,
-    :criado_em,
+    :created_at,
     :assgnr_ispb,
     :assgne_ispb,
     :pmt_cxl_id,
@@ -53,64 +53,64 @@ defmodule PixSpiCatalog.Camt055 do
     :prcg_dt_tm
   ]
 
-  @modulo_por_versao %{v1_1: V1_1}
-  @versao_por_modulo Map.new(@modulo_por_versao, fn {v, m} -> {m, v} end)
+  @module_by_version %{v1_1: V1_1}
+  @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec build(t(), AppHdr.t(), versao()) :: {:ok, binary()} | {:error, String.t()}
-  def build(%__MODULE__{} = mensagem, %AppHdr{} = cabecalho, versao) when versao in [:v1_1] do
-    with :ok <- validar_obrigatorios(mensagem) do
-      modulo = Map.fetch!(@modulo_por_versao, versao)
+  @spec build(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
+  def build(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_1] do
+    with :ok <- validate_required(message) do
+      module = Map.fetch!(@module_by_version, version)
 
-      termo = %{
-        "AppHdr" => AppHdr.termo(cabecalho, modulo.msg_def_idr()),
-        "Document" => termo_document(mensagem)
+      term = %{
+        "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
+        "Document" => document_term(message)
       }
 
-      with {:ok, xml} <- modulo.build(termo) do
-        confirmar(modulo, xml)
+      with {:ok, xml} <- module.build(term) do
+        confirm(module, xml)
       end
     end
   end
 
   @doc "Parseia um XML de camt.055 de volta para a struct."
-  @spec parse(binary()) :: {:ok, t(), versao()} | {:error, term()}
+  @spec parse(binary()) :: {:ok, t(), version()} | {:error, term()}
   def parse(xml) when is_binary(xml) do
-    case PixSpiCatalog.Registro.parse(xml) do
-      {:ok, modulo, termo} ->
-        case Map.fetch(@versao_por_modulo, modulo) do
-          {:ok, versao} -> {:ok, struct_de_termo(termo), versao}
-          :error -> {:error, {:nao_e_camt055, modulo.msg_def_idr()}}
+    case PixSpiCatalog.Registry.parse(xml) do
+      {:ok, module, term} ->
+        case Map.fetch(@version_by_module, module) do
+          {:ok, version} -> {:ok, struct_from_term(term), version}
+          :error -> {:error, {:not_camt055, module.msg_def_idr()}}
         end
 
-      erro ->
-        erro
+      error ->
+        error
     end
   end
 
-  defp confirmar(modulo, xml) do
-    case modulo.parse(xml) do
-      {:ok, _termo} -> {:ok, xml}
-      {:error, motivo} -> {:error, motivo}
+  defp confirm(module, xml) do
+    case module.parse(xml) do
+      {:ok, _term} -> {:ok, xml}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp validar_obrigatorios(mensagem) do
-    faltando = Enum.filter(@campos_obrigatorios, &(Map.get(mensagem, &1) in [nil, ""]))
+  defp validate_required(message) do
+    missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
-    if faltando == [],
+    if missing == [],
       do: :ok,
-      else: {:error, "campos obrigatórios ausentes: #{inspect(faltando)}"}
+      else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp termo_document(m) do
+  defp document_term(m) do
     %{
       "CstmrPmtCxlReq" => %{
         "Assgnmt" => %{
           "Id" => m.assgnmt_id,
-          "Assgnr" => %{"Agt" => agente_termo(m.assgnr_ispb)},
-          "Assgne" => %{"Agt" => agente_termo(m.assgne_ispb)},
-          "CreDtTm" => formatar_data_hora(m.criado_em)
+          "Assgnr" => %{"Agt" => agent_term(m.assgnr_ispb)},
+          "Assgne" => %{"Agt" => agent_term(m.assgne_ispb)},
+          "CreDtTm" => format_datetime(m.created_at)
         },
         "Undrlyg" => %{
           "OrgnlPmtInfAndCxl" => %{
@@ -126,7 +126,7 @@ defmodule PixSpiCatalog.Camt055 do
                 "Envlp" => %{
                   "CxlPrcgDtls" => %{
                     "CxlPrcgTp" => m.cxl_prcg_tp,
-                    "PrcgDtTm" => formatar_data_hora(m.prcg_dt_tm)
+                    "PrcgDtTm" => format_datetime(m.prcg_dt_tm)
                   }
                 }
               }
@@ -137,10 +137,10 @@ defmodule PixSpiCatalog.Camt055 do
     }
   end
 
-  defp agente_termo(ispb), do: %{"FinInstnId" => %{"ClrSysMmbId" => %{"MmbId" => ispb}}}
+  defp agent_term(ispb), do: %{"FinInstnId" => %{"ClrSysMmbId" => %{"MmbId" => ispb}}}
 
-  defp struct_de_termo(termo) do
-    doc = get_in(termo, ["Document", "CstmrPmtCxlReq"])
+  defp struct_from_term(term) do
+    doc = get_in(term, ["Document", "CstmrPmtCxlReq"])
     assgnmt = doc["Assgnmt"]
     cxl = get_in(doc, ["Undrlyg", "OrgnlPmtInfAndCxl"])
     cxl_rsn = cxl["CxlRsnInf"]
@@ -148,7 +148,7 @@ defmodule PixSpiCatalog.Camt055 do
 
     %__MODULE__{
       assgnmt_id: assgnmt["Id"],
-      criado_em: parse_data_hora(assgnmt["CreDtTm"]),
+      created_at: parse_datetime(assgnmt["CreDtTm"]),
       assgnr_ispb: get_in(assgnmt, ["Assgnr", "Agt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
       assgne_ispb: get_in(assgnmt, ["Assgne", "Agt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
       pmt_cxl_id: cxl["PmtCxlId"],
@@ -158,18 +158,18 @@ defmodule PixSpiCatalog.Camt055 do
       orgnl_end_to_end_id: tx_inf["OrgnlEndToEndId"],
       cxl_prcg_tp: get_in(tx_inf, ["SplmtryData", "Envlp", "CxlPrcgDtls", "CxlPrcgTp"]),
       prcg_dt_tm:
-        get_in(tx_inf, ["SplmtryData", "Envlp", "CxlPrcgDtls", "PrcgDtTm"]) |> parse_data_hora()
+        get_in(tx_inf, ["SplmtryData", "Envlp", "CxlPrcgDtls", "PrcgDtTm"]) |> parse_datetime()
     }
   end
 
-  defp formatar_data_hora(%DateTime{} = dt) do
+  defp format_datetime(%DateTime{} = dt) do
     dt |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
   end
 
-  defp parse_data_hora(nil), do: nil
+  defp parse_datetime(nil), do: nil
 
-  defp parse_data_hora(texto) do
-    {:ok, dt, _offset} = DateTime.from_iso8601(texto)
+  defp parse_datetime(text) do
+    {:ok, dt, _offset} = DateTime.from_iso8601(text)
     dt
   end
 end

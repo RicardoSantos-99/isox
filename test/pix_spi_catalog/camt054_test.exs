@@ -5,19 +5,19 @@ defmodule PixSpiCatalog.Camt054Test do
 
   @agora DateTime.utc_now() |> DateTime.truncate(:millisecond)
 
-  @cabecalho %AppHdr{
-    ispb_origem: "00000000",
-    ispb_destino: "11111111",
+  @header %AppHdr{
+    from_ispb: "00000000",
+    to_ispb: "11111111",
     biz_msg_idr: "M123456780123456789abcdefghijklm",
-    criado_em: @agora
+    created_at: @agora
   }
 
-  @mensagem %Camt054{
+  @message %Camt054{
     msg_id: "M123456780123456789abcdefghijklm",
-    criado_em: @agora,
+    created_at: @agora,
     ntfctn_id: "M123456780123456789abcdefghijkln",
     acct_ispb: "11111111",
-    valor: "150.00",
+    value: "150.00",
     cdt_dbt_ind: "CRDT",
     sts_cd: "BOOK",
     bktxcd_domn_cd: "PMNT",
@@ -28,51 +28,51 @@ defmodule PixSpiCatalog.Camt054Test do
   }
 
   test "só com o obrigatório, monta e volta pra struct" do
-    assert {:ok, xml} = Camt054.build(@mensagem, @cabecalho, :v1_16)
+    assert {:ok, xml} = Camt054.build(@message, @header, :v1_16)
     assert {:ok, de_volta, :v1_16} = Camt054.parse(xml)
 
-    assert de_volta.end_to_end_id == @mensagem.end_to_end_id
-    assert de_volta.dbtr_nome == nil
+    assert de_volta.end_to_end_id == @message.end_to_end_id
+    assert de_volta.dbtr_name == nil
     refute xml =~ "RltdPties"
   end
 
   test "com pagador e recebedor completos (RltdPties)" do
-    mensagem = %{
-      @mensagem
-      | dbtr_nome: "Fulano de Tal",
+    message = %{
+      @message
+      | dbtr_name: "Fulano de Tal",
         dbtr_cpf_cnpj: "12345678901",
-        dbtr_conta_id: "00012345",
-        dbtr_conta_tipo: "CACC",
+        dbtr_acct_id: "00012345",
+        dbtr_acct_type: "CACC",
         cdtr_cpf_cnpj: "12345678000199",
-        cdtr_conta_id: "00098765",
-        cdtr_conta_tipo: "CACC",
+        cdtr_acct_id: "00098765",
+        cdtr_acct_type: "CACC",
         dbtr_agt_ispb: "11111111",
         cdtr_agt_ispb: "22222222",
         purp_cd: "IPAY",
-        info_pagamento: "pagamento de teste"
+        rmt_inf: "pagamento de teste"
     }
 
-    assert {:ok, xml} = Camt054.build(mensagem, @cabecalho, :v1_16)
+    assert {:ok, xml} = Camt054.build(message, @header, :v1_16)
     assert {:ok, de_volta, :v1_16} = Camt054.parse(xml)
 
-    assert de_volta.dbtr_nome == "Fulano de Tal"
+    assert de_volta.dbtr_name == "Fulano de Tal"
     assert de_volta.dbtr_cpf_cnpj == "12345678901"
     assert de_volta.cdtr_cpf_cnpj == "12345678000199"
     assert de_volta.dbtr_agt_ispb == "11111111"
     assert de_volta.cdtr_agt_ispb == "22222222"
     assert de_volta.purp_cd == "IPAY"
-    assert de_volta.info_pagamento == "pagamento de teste"
+    assert de_volta.rmt_inf == "pagamento de teste"
   end
 
   test "lançamento de devolução, com RtrInf" do
-    mensagem = %{
-      @mensagem
+    message = %{
+      @message
       | cdt_dbt_ind: "DBIT",
         rtr_rsn_cd: "MD06",
         rtr_rsn_addtl_inf: "devolução solicitada"
     }
 
-    assert {:ok, xml} = Camt054.build(mensagem, @cabecalho, :v1_15)
+    assert {:ok, xml} = Camt054.build(message, @header, :v1_15)
     assert {:ok, de_volta, :v1_15} = Camt054.parse(xml)
 
     assert de_volta.cdt_dbt_ind == "DBIT"
@@ -81,9 +81,9 @@ defmodule PixSpiCatalog.Camt054Test do
   end
 
   test "campo obrigatório ausente é rejeitado antes de montar XML" do
-    mensagem = %{@mensagem | end_to_end_id: nil}
-    assert {:error, motivo} = Camt054.build(mensagem, @cabecalho, :v1_16)
-    assert motivo =~ "end_to_end_id"
+    message = %{@message | end_to_end_id: nil}
+    assert {:error, reason} = Camt054.build(message, @header, :v1_16)
+    assert reason =~ "end_to_end_id"
   end
 
   test "parse rejeita XML de outra mensagem" do
@@ -92,6 +92,6 @@ defmodule PixSpiCatalog.Camt054Test do
     <Envelope xmlns="https://www.bcb.gov.br/pi/camt.054/1.16"><Nada/></Envelope>
     """
 
-    assert {:error, _motivo} = Camt054.parse(outro_xml)
+    assert {:error, _reason} = Camt054.parse(outro_xml)
   end
 end
