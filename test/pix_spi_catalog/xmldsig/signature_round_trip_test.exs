@@ -29,6 +29,18 @@ defmodule PixSpiCatalog.Xmldsig.SignatureRoundTripTest do
     ~s(<Envelope xmlns="urn:envelope">#{app_hdr_with_signature}#{document}</Envelope>)
   end
 
+  test "verificar contra mensagem sem assinatura nenhuma erra, não crasha", %{
+    certificate_der: certificate_der
+  } do
+    # Regressão: usar `valor || :atomo_de_erro` como fallback de "nil" num
+    # guard `not is_nil/1` não funciona — o próprio átomo de erro também
+    # não é nil, então o guard passava e o código seguia tratando o átomo
+    # como se fosse o elemento encontrado, e explodia mais adiante.
+    envelope = assemble_envelope(app_hdr_xml(), document_xml(), "")
+
+    assert {:error, :missing_signature} = Verifier.verify(envelope, certificate_der)
+  end
+
   test "assina e verifica com sucesso", %{
     private_key_der: private_key_der,
     certificate_der: certificate_der

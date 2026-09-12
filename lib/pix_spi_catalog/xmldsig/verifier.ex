@@ -66,24 +66,26 @@ defmodule PixSpiCatalog.Xmldsig.Verifier do
     # Bytes crus, não codepoints — ver Canonicalizer.canonicalize/1.
     {root, _rest} = :xmerl_scan.string(:binary.bin_to_list(envelope_xml), quiet: true)
 
-    with app_hdr when not is_nil(app_hdr) <- child(root, "AppHdr") || :missing_app_hdr,
-         document when not is_nil(document) <- child(root, "Document") || :missing_document,
-         signature when not is_nil(signature) <- find_signature(app_hdr) || :missing_signature,
-         signed_info when not is_nil(signed_info) <-
-           child(signature, "SignedInfo") || :missing_signed_info,
-         key_info when not is_nil(key_info) <- child(signature, "KeyInfo") || :missing_key_info,
-         signature_value when not is_nil(signature_value) <-
-           signature |> child("SignatureValue") |> text() || :missing_signature_value,
+    with {:ok, app_hdr} <- required(child(root, "AppHdr"), :missing_app_hdr),
+         {:ok, document} <- required(child(root, "Document"), :missing_document),
+         {:ok, signature} <- required(find_signature(app_hdr), :missing_signature),
+         {:ok, signed_info} <- required(child(signature, "SignedInfo"), :missing_signed_info),
+         {:ok, key_info} <- required(child(signature, "KeyInfo"), :missing_key_info),
+         {:ok, signature_value} <-
+           required(signature |> child("SignatureValue") |> text(), :missing_signature_value),
          :ok <- verify_certificate(key_info, expected_certificate_der),
-         :ok <- verify_digests(signed_info, app_hdr, document, key_info),
-         :ok <- verify_signature_value(signed_info, signature_value, expected_certificate_der) do
-      :ok
-    else
-      {:error, _reason} = error -> error
-      reason when is_atom(reason) -> {:error, reason}
-      reason -> {:error, reason}
+         :ok <- verify_digests(signed_info, app_hdr, document, key_info) do
+      verify_signature_value(signed_info, signature_value, expected_certificate_der)
     end
   end
+
+  # `required/2` sempre devolve {:ok, _} ou {:error, _}, nunca o valor cru
+  # — misturar `nil` com um átomo de fallback (`valor || :faltando`) não dá
+  # pra distinguir "achei" de "não achei" num guard `not is_nil/1`, porque
+  # o próprio átomo de fallback também não é nil (bug real, achado testando
+  # verificação contra uma mensagem sem assinatura nenhuma).
+  defp required(nil, reason), do: {:error, reason}
+  defp required(value, _reason), do: {:ok, value}
 
   defp find_signature(app_hdr) do
     app_hdr |> child("Sgntr") |> child("Signature")
