@@ -12,8 +12,19 @@ defmodule Isox.Pain012 do
   `Adjstmnt` — conferido contra o schema real de cada mensagem, não
   assumido por semelhança.
 
-  `MndtPrcgDtls` é `opcional (lista)` aqui (diferente do `Pain009`, onde
-  é obrigatório com mínimo de 3) — `SplmtryData` ganha ainda `MndtSts`.
+  `MndtPrcgDtls` é `opcional (lista, 0 a 3)` aqui (diferente do `Pain009`,
+  onde é obrigatório com exatamente 3) — `SplmtryData` ganha ainda
+  `MndtSts`.
+
+  Regra da planilha do catálogo, sem contrapartida estrutural no XSD:
+  `accptd == "false"` exige `rjct_rsn_prtry` presente e `mndt_sts`/
+  `mndt_prcg_dtls` ausentes; `accptd == "true"` exige o oposto
+  (`rjct_rsn_prtry` ausente, `mndt_sts` presente). `encode/3` valida
+  isso explicitamente — confirmado nos 12 exemplos oficiais do BCB,
+  sem exceção. A composição exata de `mndt_prcg_dtls` (que domínios
+  acompanham qual `mndt_sts`) não é validada — regra mais profunda,
+  documentada na planilha mas não verificável aqui sem duplicar a
+  lógica de negócio inteira.
   """
 
   alias Isox.AppHdr
@@ -94,6 +105,7 @@ defmodule Isox.Pain012 do
   def encode([%__MODULE__{} | _] = messages, %AppHdr{} = header, version)
       when version in [:v1_3, :v1_4] do
     with :ok <- validate_all_required(messages),
+         :ok <- validate_all_acceptance_consistency(messages),
          :ok <- validate_shared_header(messages) do
       module = Map.fetch!(@module_by_version, version)
       [first | _] = messages
@@ -153,6 +165,51 @@ defmodule Isox.Pain012 do
       do: :ok,
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
+
+  defp validate_all_acceptance_consistency(messages) do
+    Enum.reduce_while(messages, :ok, fn message, :ok ->
+      case validate_acceptance_consistency(message) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  # Planilha do catálogo, confirmada pelos 12 exemplos oficiais do BCB
+  # sem exceção: accptd "false" nunca leva mndt_sts/mndt_prcg_dtls (só
+  # rjct_rsn_prtry); accptd "true" nunca leva rjct_rsn_prtry, e sempre
+  # leva mndt_sts. O XSD não força nada disso (RjctRsn/MndtSts/
+  # MndtPrcgDtls são todos opcionais pro schema, sem vínculo entre si
+  # declarado) — sem esta checagem, uma resposta de aceite sem
+  # mndt_sts, ou uma rejeição carregando mndt_sts, passava sem erro
+  # nenhum.
+  defp validate_acceptance_consistency(%{accptd: "false"} = m) do
+    cond do
+      m.rjct_rsn_prtry == nil ->
+        {:error, "rjct_rsn_prtry é obrigatório quando accptd é \"false\""}
+
+      m.mndt_sts != nil or m.mndt_prcg_dtls != [] ->
+        {:error, "mndt_sts/mndt_prcg_dtls não devem ser informados quando accptd é \"false\""}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_acceptance_consistency(%{accptd: "true"} = m) do
+    cond do
+      m.rjct_rsn_prtry != nil ->
+        {:error, "rjct_rsn_prtry não deve ser informado quando accptd é \"true\""}
+
+      m.mndt_sts == nil ->
+        {:error, "mndt_sts é obrigatório quando accptd é \"true\""}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_acceptance_consistency(_message), do: :ok
 
   defp validate_shared_header([_single]), do: :ok
 

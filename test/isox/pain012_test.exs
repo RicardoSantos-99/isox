@@ -31,13 +31,22 @@ defmodule Isox.Pain012Test do
     orgnl_rfrd_doc_nb: "DOC001"
   }
 
-  test "aceite, sem motivo nem SplmtryData" do
-    assert {:ok, xml} = Pain012.encode(@message, @header, :v1_4)
+  # accptd "true" sempre leva mndt_sts + mndt_prcg_dtls (CRTN/UPDT no
+  # mínimo) nos 12 exemplos oficiais do BCB — não existe "aceite sem
+  # SplmtryData" de verdade, mesmo o bloco sendo opcional pro XSD.
+  test "aceite, sem motivo, com status e histórico mínimos" do
+    message = %{
+      @message
+      | mndt_sts: "PDNG",
+        mndt_prcg_dtls: [%{tp: "CRTN", dt_tm: @agora}, %{tp: "UPDT", dt_tm: @agora}]
+    }
+
+    assert {:ok, xml} = Pain012.encode(message, @header, :v1_4)
     assert {:ok, de_volta, :v1_4} = Pain012.decode(xml)
 
     assert de_volta.accptd == "true"
     assert de_volta.rjct_rsn_prtry == nil
-    refute xml =~ "SplmtryData"
+    assert de_volta.mndt_sts == "PDNG"
   end
 
   test "rejeição com reason" do
@@ -47,6 +56,34 @@ defmodule Isox.Pain012Test do
     assert {:ok, de_volta, :v1_3} = Pain012.decode(xml)
     assert de_volta.accptd == "false"
     assert de_volta.rjct_rsn_prtry == "AC01"
+  end
+
+  test "aceite sem mndt_sts é rejeitado (planilha: obrigatório quando accptd=true)" do
+    assert {:error, reason} = Pain012.encode(@message, @header, :v1_4)
+    assert reason =~ "mndt_sts"
+  end
+
+  test "aceite com rjct_rsn_prtry é rejeitado" do
+    message = %{
+      @message
+      | mndt_sts: "PDNG",
+        rjct_rsn_prtry: "AC01"
+    }
+
+    assert {:error, reason} = Pain012.encode(message, @header, :v1_4)
+    assert reason =~ "rjct_rsn_prtry"
+  end
+
+  test "rejeição sem rjct_rsn_prtry é rejeitado" do
+    message = %{@message | accptd: "false"}
+    assert {:error, reason} = Pain012.encode(message, @header, :v1_4)
+    assert reason =~ "rjct_rsn_prtry"
+  end
+
+  test "rejeição com mndt_sts é rejeitado (planilha: não deve ser preenchido quando accptd=false)" do
+    message = %{@message | accptd: "false", rjct_rsn_prtry: "AC01", mndt_sts: "PDNG"}
+    assert {:error, reason} = Pain012.encode(message, @header, :v1_4)
+    assert reason =~ "mndt_sts"
   end
 
   test "com endereço do devedor, referência do mandato, status e histórico" do

@@ -43,6 +43,18 @@ Primeira versão pública.
 
 ### Corrigido
 
+- `Pain012`: nada validava a regra cruzada da planilha do catálogo
+  entre `accptd`, `rjct_rsn_prtry`, `mndt_sts` e `mndt_prcg_dtls` —
+  dava pra montar uma resposta de aceite sem `mndt_sts` (obrigatório
+  pela planilha quando `accptd = "true"`), ou uma rejeição carregando
+  `mndt_sts`/`mndt_prcg_dtls` (que a planilha diz que não devem ser
+  preenchidos quando `accptd = "false"`), sem erro nenhum — o próprio
+  teste do módulo tinha essa combinação inconsistente (aceite sem
+  nenhum dado de `SplmtryData`) sem ninguém notar. `encode/3` agora
+  valida isso explicitamente, confirmado pelos 12 exemplos oficiais do
+  BCB pra esta mensagem, sem exceção. Achado no deep dive de validação
+  do catálogo (issue #52, pain.012).
+
 - `xs:boolean` (`TrckgInd`/`DtAdjstmntRuleInd`, usados em `Pain009`,
   `Pain011`, `Pain012`) não tinha validação nenhuma — mesma causa raiz
   do `xs:date` (issue #47): o XSD desses campos não declara `pattern`
