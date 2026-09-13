@@ -36,7 +36,11 @@ defmodule Isox.Generated.Admi004.V1_2 do
                                 pattern: nil,
                                 enum: ["SPI"],
                                 max_length: nil,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -48,7 +52,11 @@ defmodule Isox.Generated.Admi004.V1_2 do
                                 pattern: nil,
                                 enum: nil,
                                 max_length: 1000,
-                                min_length: 1
+                                min_length: 1,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1

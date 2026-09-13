@@ -258,12 +258,115 @@ defmodule Isox.Xml.Codec do
       raise "valor #{inspect(value)} é menor que o tamanho mínimo #{type.min_length}"
     end
 
+    validate_decimal!(value, type)
+
     value
   end
 
   # xs:pattern casa contra o valor inteiro, não uma substring — Regex.match?
   # do Elixir não ancora sozinho.
   defp anchored_regex(pattern), do: Regex.compile!("^(?:" <> pattern <> ")$")
+
+  # fractionDigits/totalDigits/minInclusive/maxInclusive (ex.:
+  # ActiveCurrencyAndAmount_SimpleType: fractionDigits 2, totalDigits 18,
+  # minInclusive 0) não tinham validação nenhuma antes — pattern/enum/
+  # tamanho não cobrem faixa numérica nem casas decimais, então um valor
+  # monetário negativo, com casas decimais demais, ou nem sequer numérico
+  # ("abc") passava reto pelo parse. Sem lib de decimal: os valores desse
+  # catálogo cabem em inteiro nativo (≤18 dígitos), então compara como
+  # inteiro escalado (parte inteira + fracionária concatenadas, fração
+  # completada com zero à direita até o mesmo tamanho dos dois lados) em vez
+  # de converter pra float, que perderia precisão exata em valor monetário.
+  defp validate_decimal!(value, %SimpleType{
+         fraction_digits: fraction_digits,
+         total_digits: total_digits,
+         min_inclusive: min_inclusive,
+         max_inclusive: max_inclusive
+       })
+       when not is_nil(fraction_digits) or not is_nil(total_digits) or
+              not is_nil(min_inclusive) or not is_nil(max_inclusive) do
+    case parse_decimal(value) do
+      :error ->
+        raise "valor #{inspect(value)} não é um decimal válido"
+
+      decimal ->
+        check_fraction_digits!(value, decimal, fraction_digits)
+        check_total_digits!(value, decimal, total_digits)
+        check_min_inclusive!(value, decimal, min_inclusive)
+        check_max_inclusive!(value, decimal, max_inclusive)
+    end
+  end
+
+  defp validate_decimal!(_value, _type), do: :ok
+
+  defp check_fraction_digits!(_value, _decimal, nil), do: :ok
+
+  defp check_fraction_digits!(value, {_sign, _int_digits, frac_digits}, fraction_digits) do
+    if String.length(frac_digits) > fraction_digits do
+      raise "valor #{inspect(value)} tem mais casas decimais que o permitido (#{fraction_digits})"
+    end
+  end
+
+  defp check_total_digits!(_value, _decimal, nil), do: :ok
+
+  defp check_total_digits!(value, {_sign, int_digits, frac_digits}, total_digits) do
+    if significant_digits(int_digits, frac_digits) > total_digits do
+      raise "valor #{inspect(value)} excede o total de dígitos permitido (#{total_digits})"
+    end
+  end
+
+  defp check_min_inclusive!(_value, _decimal, nil), do: :ok
+
+  defp check_min_inclusive!(value, decimal, min_inclusive) do
+    if compare_decimal(decimal, min_inclusive) == :lt do
+      raise "valor #{inspect(value)} é menor que o mínimo permitido (#{min_inclusive})"
+    end
+  end
+
+  defp check_max_inclusive!(_value, _decimal, nil), do: :ok
+
+  defp check_max_inclusive!(value, decimal, max_inclusive) do
+    if compare_decimal(decimal, max_inclusive) == :gt do
+      raise "valor #{inspect(value)} excede o máximo permitido (#{max_inclusive})"
+    end
+  end
+
+  # named_captures, não Regex.run posicional: quando o grupo fracionário
+  # opcional não participa do match (valor sem ponto decimal, ex. "0"), o
+  # :re do Erlang derruba esse grupo à direita da lista em vez de devolver
+  # "" — Regex.run vem com aridade variável nesse caso, e um case por
+  # posição quebra. named_captures sempre devolve as 3 chaves.
+  @decimal_pattern ~r/^(?<sign>-?)(?<int>\d+)(?:\.(?<frac>\d+))?$/
+
+  defp parse_decimal(value) do
+    case Regex.named_captures(@decimal_pattern, value) do
+      %{"sign" => sign, "int" => int_digits, "frac" => frac_digits} ->
+        {if(sign == "-", do: -1, else: 1), int_digits, frac_digits}
+
+      nil ->
+        :error
+    end
+  end
+
+  defp significant_digits(int_digits, frac_digits) do
+    trimmed = String.trim_leading(int_digits, "0")
+    int_count = if trimmed == "", do: 1, else: String.length(trimmed)
+    int_count + String.length(frac_digits)
+  end
+
+  defp compare_decimal({sign, int_digits, frac_digits}, bound) do
+    {bound_sign, bound_int, bound_frac} = parse_decimal(bound)
+    scale = max(String.length(frac_digits), String.length(bound_frac))
+
+    magnitude = String.to_integer(int_digits <> String.pad_trailing(frac_digits, scale, "0"))
+    bound_magnitude = String.to_integer(bound_int <> String.pad_trailing(bound_frac, scale, "0"))
+
+    ordering(sign * magnitude, bound_sign * bound_magnitude)
+  end
+
+  defp ordering(a, b) when a < b, do: :lt
+  defp ordering(a, b) when a > b, do: :gt
+  defp ordering(_a, _b), do: :eq
 
   defp serialize_node(node) do
     case elem(node, 0) do

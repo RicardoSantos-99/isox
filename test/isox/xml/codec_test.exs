@@ -224,6 +224,76 @@ defmodule Isox.Xml.CodecTest do
     assert {:error, _} = Codec.parse(schema, "<E><X>abcd</X></E>")
   end
 
+  # ActiveCurrencyAndAmount_SimpleType do catálogo (fractionDigits 2,
+  # totalDigits 18, minInclusive 0) — antes desses 4 campos existirem no
+  # SimpleType, um valor monetário negativo, com casas decimais demais, ou
+  # nem sequer numérico passava reto pelo parse: pattern/enum/tamanho não
+  # cobrem faixa numérica.
+  describe "validação: decimal (fraction_digits/total_digits/min_inclusive/max_inclusive)" do
+    setup do
+      schema = %Element{
+        tag: "E",
+        type: %ComplexType{
+          content: [
+            %Element{
+              tag: "Valor",
+              type: %SimpleType{
+                base: "decimal",
+                fraction_digits: 2,
+                total_digits: 18,
+                min_inclusive: "0"
+              }
+            }
+          ]
+        }
+      }
+
+      %{schema: schema}
+    end
+
+    test "valor dentro da faixa passa", %{schema: schema} do
+      assert {:ok, %{"Valor" => "150.00"}} = Codec.parse(schema, "<E><Valor>150.00</Valor></E>")
+      assert {:ok, %{"Valor" => "0"}} = Codec.parse(schema, "<E><Valor>0</Valor></E>")
+    end
+
+    test "negativo viola min_inclusive", %{schema: schema} do
+      assert {:error, message} = Codec.parse(schema, "<E><Valor>-50.00</Valor></E>")
+      assert message =~ "mínimo"
+    end
+
+    test "casas decimais a mais violam fraction_digits", %{schema: schema} do
+      assert {:error, message} = Codec.parse(schema, "<E><Valor>10.999</Valor></E>")
+      assert message =~ "casas decimais"
+    end
+
+    test "dígitos totais a mais violam total_digits", %{schema: schema} do
+      assert {:error, message} =
+               Codec.parse(schema, "<E><Valor>123456789012345678.00</Valor></E>")
+
+      assert message =~ "total de dígitos"
+
+      assert {:ok, _} = Codec.parse(schema, "<E><Valor>1234567890123456.78</Valor></E>")
+    end
+
+    test "valor não numérico é erro, não passa reto como string", %{schema: schema} do
+      assert {:error, message} = Codec.parse(schema, "<E><Valor>abc</Valor></E>")
+      assert message =~ "decimal válido"
+    end
+
+    test "max_inclusive, quando presente, também é respeitado" do
+      schema = %Element{
+        tag: "E",
+        type: %ComplexType{
+          content: [%Element{tag: "X", type: %SimpleType{base: "decimal", max_inclusive: "10"}}]
+        }
+      }
+
+      assert {:ok, _} = Codec.parse(schema, "<E><X>10</X></E>")
+      assert {:error, message} = Codec.parse(schema, "<E><X>10.01</X></E>")
+      assert message =~ "máximo"
+    end
+  end
+
   test "escapa e desescapa caracteres especiais em texto e atributo" do
     schema = %Element{
       tag: "E",

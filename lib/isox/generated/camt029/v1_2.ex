@@ -36,7 +36,11 @@ defmodule Isox.Generated.Camt029.V1_2 do
                                 pattern: "[M][0-9A-Z]{8}[a-zA-Z0-9]{23}",
                                 enum: nil,
                                 max_length: 32,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -66,7 +70,11 @@ defmodule Isox.Generated.Camt029.V1_2 do
                                                             pattern: "[0-9A-Z]{8}",
                                                             enum: nil,
                                                             max_length: 8,
-                                                            min_length: nil
+                                                            min_length: nil,
+                                                            fraction_digits: nil,
+                                                            total_digits: nil,
+                                                            min_inclusive: nil,
+                                                            max_inclusive: nil
                                                           },
                                                           min: 1,
                                                           max: 1
@@ -128,7 +136,11 @@ defmodule Isox.Generated.Camt029.V1_2 do
                                                             pattern: "[0-9A-Z]{8}",
                                                             enum: nil,
                                                             max_length: 8,
-                                                            min_length: nil
+                                                            min_length: nil,
+                                                            fraction_digits: nil,
+                                                            total_digits: nil,
+                                                            min_inclusive: nil,
+                                                            max_inclusive: nil
                                                           },
                                                           min: 1,
                                                           max: 1
@@ -173,7 +185,11 @@ defmodule Isox.Generated.Camt029.V1_2 do
                                   "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                 enum: nil,
                                 max_length: nil,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -198,7 +214,11 @@ defmodule Isox.Generated.Camt029.V1_2 do
                                     pattern: nil,
                                     enum: ["INFO"],
                                     max_length: nil,
-                                    min_length: nil
+                                    min_length: nil,
+                                    fraction_digits: nil,
+                                    total_digits: nil,
+                                    min_inclusive: nil,
+                                    max_inclusive: nil
                                   },
                                   min: 1,
                                   max: 1
@@ -230,7 +250,11 @@ defmodule Isox.Generated.Camt029.V1_2 do
                                         "[C][A][0-9A-Z]{8}[0-9]{4}[0-1][0-9][0-3][0-9][a-zA-Z0-9]{11}",
                                       enum: nil,
                                       max_length: nil,
-                                      min_length: nil
+                                      min_length: nil,
+                                      fraction_digits: nil,
+                                      total_digits: nil,
+                                      min_inclusive: nil,
+                                      max_inclusive: nil
                                     },
                                     min: 1,
                                     max: 1
@@ -242,7 +266,11 @@ defmodule Isox.Generated.Camt029.V1_2 do
                                       pattern: "[a-zA-Z0-9]{1,35}",
                                       enum: nil,
                                       max_length: nil,
-                                      min_length: nil
+                                      min_length: nil,
+                                      fraction_digits: nil,
+                                      total_digits: nil,
+                                      min_inclusive: nil,
+                                      max_inclusive: nil
                                     },
                                     min: 1,
                                     max: 1
@@ -254,7 +282,11 @@ defmodule Isox.Generated.Camt029.V1_2 do
                                       pattern: nil,
                                       enum: ["ACCR", "RJCR"],
                                       max_length: nil,
-                                      min_length: nil
+                                      min_length: nil,
+                                      fraction_digits: nil,
+                                      total_digits: nil,
+                                      min_inclusive: nil,
+                                      max_inclusive: nil
                                     },
                                     min: 1,
                                     max: 1
@@ -285,7 +317,11 @@ defmodule Isox.Generated.Camt029.V1_2 do
                                                         "PRJL"
                                                       ],
                                                       max_length: nil,
-                                                      min_length: nil
+                                                      min_length: nil,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     min: 1,
                                                     max: 1
@@ -320,7 +356,11 @@ defmodule Isox.Generated.Camt029.V1_2 do
                                               "[E][0-9A-Z]{8}[0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][a-zA-Z0-9]{11}",
                                             enum: nil,
                                             max_length: 32,
-                                            min_length: nil
+                                            min_length: nil,
+                                            fraction_digits: nil,
+                                            total_digits: nil,
+                                            min_inclusive: nil,
+                                            max_inclusive: nil
                                           },
                                           min: 1,
                                           max: 1
@@ -365,7 +405,11 @@ defmodule Isox.Generated.Camt029.V1_2 do
                                             pattern: nil,
                                             enum: ["DHAC", "DHRC"],
                                             max_length: nil,
-                                            min_length: nil
+                                            min_length: nil,
+                                            fraction_digits: nil,
+                                            total_digits: nil,
+                                            min_inclusive: nil,
+                                            max_inclusive: nil
                                           },
                                           min: 1,
                                           max: 1
@@ -378,7 +422,11 @@ defmodule Isox.Generated.Camt029.V1_2 do
                                               "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                             enum: nil,
                                             max_length: nil,
-                                            min_length: nil
+                                            min_length: nil,
+                                            fraction_digits: nil,
+                                            total_digits: nil,
+                                            min_inclusive: nil,
+                                            max_inclusive: nil
                                           },
                                           min: 1,
                                           max: 1

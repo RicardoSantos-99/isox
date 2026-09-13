@@ -35,15 +35,33 @@ defmodule Isox.Schema do
 
   defmodule SimpleType do
     # Um <xs:simpleType> com <xs:restriction>: valida texto, não estrutura.
+    #
+    # fraction_digits/total_digits/min_inclusive/max_inclusive só valem pra
+    # base "decimal"/"integer" (ex.: ActiveCurrencyAndAmount_SimpleType:
+    # fractionDigits 2, totalDigits 18, minInclusive 0) — sem eles, um valor
+    # monetário como "-50.00" ou "abc" passava reto pelo parse, porque
+    # pattern/enum/tamanho não cobrem faixa numérica nem casas decimais.
     @moduledoc false
-    defstruct base: "string", pattern: nil, enum: nil, max_length: nil, min_length: nil
+    defstruct base: "string",
+              pattern: nil,
+              enum: nil,
+              max_length: nil,
+              min_length: nil,
+              fraction_digits: nil,
+              total_digits: nil,
+              min_inclusive: nil,
+              max_inclusive: nil
 
     @type t :: %__MODULE__{
             base: String.t(),
             pattern: String.t() | nil,
             enum: [String.t()] | nil,
             max_length: pos_integer() | nil,
-            min_length: pos_integer() | nil
+            min_length: pos_integer() | nil,
+            fraction_digits: non_neg_integer() | nil,
+            total_digits: pos_integer() | nil,
+            min_inclusive: String.t() | nil,
+            max_inclusive: String.t() | nil
           }
   end
 

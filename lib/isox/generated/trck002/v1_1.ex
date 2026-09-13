@@ -36,7 +36,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                 pattern: "[M][0-9A-Z]{8}[a-zA-Z0-9]{23}",
                                 enum: nil,
                                 max_length: 32,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -49,7 +53,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                   "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                 enum: nil,
                                 max_length: nil,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -76,7 +84,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                       pattern: nil,
                                       enum: ["ACCC"],
                                       max_length: nil,
-                                      min_length: nil
+                                      min_length: nil,
+                                      fraction_digits: nil,
+                                      total_digits: nil,
+                                      min_inclusive: nil,
+                                      max_inclusive: nil
                                     },
                                     min: 1,
                                     max: 1
@@ -104,7 +116,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                               "[D][0-9A-Z]{8}[0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][a-zA-Z0-9]{11}",
                                             enum: nil,
                                             max_length: 32,
-                                            min_length: nil
+                                            min_length: nil,
+                                            fraction_digits: nil,
+                                            total_digits: nil,
+                                            min_inclusive: nil,
+                                            max_inclusive: nil
                                           },
                                           min: 0,
                                           max: 1
@@ -117,7 +133,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                               "[E][0-9A-Z]{8}[0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][a-zA-Z0-9]{11}",
                                             enum: nil,
                                             max_length: 32,
-                                            min_length: nil
+                                            min_length: nil,
+                                            fraction_digits: nil,
+                                            total_digits: nil,
+                                            min_inclusive: nil,
+                                            max_inclusive: nil
                                           },
                                           min: 1,
                                           max: 1
@@ -155,7 +175,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                         "QRES"
                                                       ],
                                                       max_length: nil,
-                                                      min_length: nil
+                                                      min_length: nil,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     min: 1,
                                                     max: 1
@@ -189,7 +213,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                             pattern: nil,
                                             enum: ["BOK1", "BOK2"],
                                             max_length: nil,
-                                            min_length: nil
+                                            min_length: nil,
+                                            fraction_digits: nil,
+                                            total_digits: nil,
+                                            min_inclusive: nil,
+                                            max_inclusive: nil
                                           },
                                           min: 1,
                                           max: 1
@@ -213,7 +241,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                             pattern: nil,
                                             enum: ["BRL"],
                                             max_length: nil,
-                                            min_length: nil
+                                            min_length: nil,
+                                            fraction_digits: nil,
+                                            total_digits: nil,
+                                            min_inclusive: nil,
+                                            max_inclusive: nil
                                           },
                                           required: true
                                         }
@@ -223,7 +255,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                         pattern: nil,
                                         enum: nil,
                                         max_length: nil,
-                                        min_length: nil
+                                        min_length: nil,
+                                        fraction_digits: 2,
+                                        total_digits: 18,
+                                        min_inclusive: "0",
+                                        max_inclusive: nil
                                       }
                                     },
                                     min: 1,
@@ -243,7 +279,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                   "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                                 enum: nil,
                                                 max_length: nil,
-                                                min_length: nil
+                                                min_length: nil,
+                                                fraction_digits: nil,
+                                                total_digits: nil,
+                                                min_inclusive: nil,
+                                                max_inclusive: nil
                                               },
                                               min: 1,
                                               max: 1
@@ -293,7 +333,13 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                                                   "[0-9]{11}|[0-9A-Z]{12}[0-9]{2}",
                                                                                 enum: nil,
                                                                                 max_length: nil,
-                                                                                min_length: nil
+                                                                                min_length: nil,
+                                                                                fraction_digits:
+                                                                                  nil,
+                                                                                total_digits: nil,
+                                                                                min_inclusive:
+                                                                                  nil,
+                                                                                max_inclusive: nil
                                                                               },
                                                                             min: 1,
                                                                             max: 1
@@ -362,7 +408,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                             pattern: "[0-9A-Z]{1,20}",
                                                             enum: nil,
                                                             max_length: nil,
-                                                            min_length: nil
+                                                            min_length: nil,
+                                                            fraction_digits: nil,
+                                                            total_digits: nil,
+                                                            min_inclusive: nil,
+                                                            max_inclusive: nil
                                                           },
                                                           min: 1,
                                                           max: 1
@@ -374,7 +424,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                             pattern: "[0-9]{1,4}",
                                                             enum: nil,
                                                             max_length: nil,
-                                                            min_length: nil
+                                                            min_length: nil,
+                                                            fraction_digits: nil,
+                                                            total_digits: nil,
+                                                            min_inclusive: nil,
+                                                            max_inclusive: nil
                                                           },
                                                           min: 0,
                                                           max: 1
@@ -416,7 +470,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                         "TRAN"
                                                       ],
                                                       max_length: nil,
-                                                      min_length: nil
+                                                      min_length: nil,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     min: 1,
                                                     max: 1
@@ -458,7 +516,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                         pattern: "[0-9A-Z]{8}",
                                                         enum: nil,
                                                         max_length: 8,
-                                                        min_length: nil
+                                                        min_length: nil,
+                                                        fraction_digits: nil,
+                                                        total_digits: nil,
+                                                        min_inclusive: nil,
+                                                        max_inclusive: nil
                                                       },
                                                       min: 1,
                                                       max: 1
@@ -503,7 +565,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                         pattern: "[0-9A-Z]{8}",
                                                         enum: nil,
                                                         max_length: 8,
-                                                        min_length: nil
+                                                        min_length: nil,
+                                                        fraction_digits: nil,
+                                                        total_digits: nil,
+                                                        min_inclusive: nil,
+                                                        max_inclusive: nil
                                                       },
                                                       min: 1,
                                                       max: 1
@@ -563,7 +629,13 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                                                   "[0-9]{11}|[0-9A-Z]{12}[0-9]{2}",
                                                                                 enum: nil,
                                                                                 max_length: nil,
-                                                                                min_length: nil
+                                                                                min_length: nil,
+                                                                                fraction_digits:
+                                                                                  nil,
+                                                                                total_digits: nil,
+                                                                                min_inclusive:
+                                                                                  nil,
+                                                                                max_inclusive: nil
                                                                               },
                                                                             min: 1,
                                                                             max: 1
@@ -632,7 +704,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                             pattern: "[0-9A-Z]{1,20}",
                                                             enum: nil,
                                                             max_length: nil,
-                                                            min_length: nil
+                                                            min_length: nil,
+                                                            fraction_digits: nil,
+                                                            total_digits: nil,
+                                                            min_inclusive: nil,
+                                                            max_inclusive: nil
                                                           },
                                                           min: 1,
                                                           max: 1
@@ -644,7 +720,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                             pattern: "[0-9]{1,4}",
                                                             enum: nil,
                                                             max_length: nil,
-                                                            min_length: nil
+                                                            min_length: nil,
+                                                            fraction_digits: nil,
+                                                            total_digits: nil,
+                                                            min_inclusive: nil,
+                                                            max_inclusive: nil
                                                           },
                                                           min: 0,
                                                           max: 1
@@ -686,7 +766,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                         "TRAN"
                                                       ],
                                                       max_length: nil,
-                                                      min_length: nil
+                                                      min_length: nil,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     min: 1,
                                                     max: 1
@@ -713,7 +797,11 @@ defmodule Isox.Generated.Trck002.V1_1 do
                                                   pattern: nil,
                                                   enum: nil,
                                                   max_length: 77,
-                                                  min_length: 1
+                                                  min_length: 1,
+                                                  fraction_digits: nil,
+                                                  total_digits: nil,
+                                                  min_inclusive: nil,
+                                                  max_inclusive: nil
                                                 },
                                                 min: 1,
                                                 max: 1

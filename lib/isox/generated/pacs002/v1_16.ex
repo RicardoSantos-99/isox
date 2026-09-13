@@ -36,7 +36,11 @@ defmodule Isox.Generated.Pacs002.V1_16 do
                                 pattern: "[M][0-9A-Z]{8}[a-zA-Z0-9]{23}",
                                 enum: nil,
                                 max_length: 32,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -49,7 +53,11 @@ defmodule Isox.Generated.Pacs002.V1_16 do
                                   "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                 enum: nil,
                                 max_length: nil,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -73,7 +81,11 @@ defmodule Isox.Generated.Pacs002.V1_16 do
                                   "[E|D][0-9A-Z]{8}[0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][a-zA-Z0-9]{11}",
                                 enum: nil,
                                 max_length: 32,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -86,7 +98,11 @@ defmodule Isox.Generated.Pacs002.V1_16 do
                                   "[E][0-9A-Z]{8}[0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][a-zA-Z0-9]{11}",
                                 enum: nil,
                                 max_length: 32,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -98,7 +114,11 @@ defmodule Isox.Generated.Pacs002.V1_16 do
                                 pattern: nil,
                                 enum: ["ACCC", "ACSC", "ACSP", "RJCT"],
                                 max_length: nil,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -164,7 +184,11 @@ defmodule Isox.Generated.Pacs002.V1_16 do
                                                   "UPAY"
                                                 ],
                                                 max_length: nil,
-                                                min_length: nil
+                                                min_length: nil,
+                                                fraction_digits: nil,
+                                                total_digits: nil,
+                                                min_inclusive: nil,
+                                                max_inclusive: nil
                                               },
                                               min: 1,
                                               max: 1
@@ -187,7 +211,11 @@ defmodule Isox.Generated.Pacs002.V1_16 do
                                       pattern: nil,
                                       enum: nil,
                                       max_length: 105,
-                                      min_length: 1
+                                      min_length: 1,
+                                      fraction_digits: nil,
+                                      total_digits: nil,
+                                      min_inclusive: nil,
+                                      max_inclusive: nil
                                     },
                                     min: 0,
                                     max: :unbounded
@@ -213,7 +241,11 @@ defmodule Isox.Generated.Pacs002.V1_16 do
                                             "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                           enum: nil,
                                           max_length: nil,
-                                          min_length: nil
+                                          min_length: nil,
+                                          fraction_digits: nil,
+                                          total_digits: nil,
+                                          min_inclusive: nil,
+                                          max_inclusive: nil
                                         },
                                         min: 1,
                                         max: 1
@@ -240,7 +272,11 @@ defmodule Isox.Generated.Pacs002.V1_16 do
                                       pattern: nil,
                                       enum: nil,
                                       max_length: nil,
-                                      min_length: nil
+                                      min_length: nil,
+                                      fraction_digits: nil,
+                                      total_digits: nil,
+                                      min_inclusive: nil,
+                                      max_inclusive: nil
                                     },
                                     min: 1,
                                     max: 1

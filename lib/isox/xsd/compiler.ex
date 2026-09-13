@@ -211,7 +211,11 @@ defmodule Isox.Xsd.Compiler do
       pattern: single_value(children, "pattern"),
       enum: values(children, "enumeration"),
       max_length: integer_value(children, "maxLength"),
-      min_length: integer_value(children, "minLength")
+      min_length: integer_value(children, "minLength"),
+      fraction_digits: integer_value(children, "fractionDigits"),
+      total_digits: integer_value(children, "totalDigits"),
+      min_inclusive: single_value(children, "minInclusive"),
+      max_inclusive: single_value(children, "maxInclusive")
     }
   end
 

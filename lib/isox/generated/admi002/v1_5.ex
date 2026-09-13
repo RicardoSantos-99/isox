@@ -36,7 +36,11 @@ defmodule Isox.Generated.Admi002.V1_5 do
                                 pattern: nil,
                                 enum: nil,
                                 max_length: 33,
-                                min_length: 1
+                                min_length: 1,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -59,7 +63,11 @@ defmodule Isox.Generated.Admi002.V1_5 do
                                 pattern: nil,
                                 enum: nil,
                                 max_length: 35,
-                                min_length: 1
+                                min_length: 1,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -72,7 +80,11 @@ defmodule Isox.Generated.Admi002.V1_5 do
                                   "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                 enum: nil,
                                 max_length: nil,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 0,
                               max: 1
@@ -84,7 +96,11 @@ defmodule Isox.Generated.Admi002.V1_5 do
                                 pattern: nil,
                                 enum: nil,
                                 max_length: 350,
-                                min_length: 1
+                                min_length: 1,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 0,
                               max: 1
@@ -96,7 +112,11 @@ defmodule Isox.Generated.Admi002.V1_5 do
                                 pattern: nil,
                                 enum: nil,
                                 max_length: 350,
-                                min_length: 1
+                                min_length: 1,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 0,
                               max: 1
@@ -108,7 +128,11 @@ defmodule Isox.Generated.Admi002.V1_5 do
                                 pattern: nil,
                                 enum: nil,
                                 max_length: 1000,
-                                min_length: 1
+                                min_length: 1,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 0,
                               max: 1

@@ -32,4 +32,14 @@ Primeira versão pública.
   memória.
 - `mix xmldsig.spike`: mede o throughput local de assinar/verificar.
 
+### Corrigido
+
+- Validação de valor decimal (`fractionDigits`/`totalDigits`/`minInclusive`/
+  `maxInclusive` do XSD, ex.: `ActiveCurrencyAndAmount_SimpleType`): não
+  existia — um valor monetário negativo, com casas decimais a mais, com
+  mais dígitos que o permitido, ou nem sequer numérico (`"abc"`) passava
+  reto pelo `encode/3` de qualquer mensagem com campo de valor (`Pacs008`,
+  `Pacs004`, `Camt053`, `Camt054`, `Pain009/011/012/013`, `Trck002`, entre
+  outras). Achado no deep dive de validação do catálogo (issue #49).
+
 [0.1.0]: https://github.com/RicardoSantos-99/isox/releases/tag/v0.1.0

@@ -36,7 +36,11 @@ defmodule Isox.Generated.Reda014.V1_3 do
                                 pattern: "[M][0-9A-Z]{8}[a-zA-Z0-9]{23}",
                                 enum: nil,
                                 max_length: 32,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -49,7 +53,11 @@ defmodule Isox.Generated.Reda014.V1_3 do
                                   "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                 enum: nil,
                                 max_length: nil,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -90,7 +98,11 @@ defmodule Isox.Generated.Reda014.V1_3 do
                                                             pattern: "[0-9A-Z]{8}",
                                                             enum: nil,
                                                             max_length: 8,
-                                                            min_length: nil
+                                                            min_length: nil,
+                                                            fraction_digits: nil,
+                                                            total_digits: nil,
+                                                            min_inclusive: nil,
+                                                            max_inclusive: nil
                                                           },
                                                           min: 1,
                                                           max: 1
@@ -102,7 +114,11 @@ defmodule Isox.Generated.Reda014.V1_3 do
                                                             pattern: nil,
                                                             enum: ["BCB"],
                                                             max_length: nil,
-                                                            min_length: nil
+                                                            min_length: nil,
+                                                            fraction_digits: nil,
+                                                            total_digits: nil,
+                                                            min_inclusive: nil,
+                                                            max_inclusive: nil
                                                           },
                                                           min: 1,
                                                           max: 1
@@ -152,7 +168,11 @@ defmodule Isox.Generated.Reda014.V1_3 do
                                           pattern: nil,
                                           enum: ["IDRT"],
                                           max_length: nil,
-                                          min_length: nil
+                                          min_length: nil,
+                                          fraction_digits: nil,
+                                          total_digits: nil,
+                                          min_inclusive: nil,
+                                          max_inclusive: nil
                                         },
                                         min: 1,
                                         max: 1
@@ -179,7 +199,11 @@ defmodule Isox.Generated.Reda014.V1_3 do
                                       pattern: nil,
                                       enum: ["CNPJIDRT"],
                                       max_length: nil,
-                                      min_length: nil
+                                      min_length: nil,
+                                      fraction_digits: nil,
+                                      total_digits: nil,
+                                      min_inclusive: nil,
+                                      max_inclusive: nil
                                     },
                                     min: 1,
                                     max: 1
@@ -191,7 +215,11 @@ defmodule Isox.Generated.Reda014.V1_3 do
                                       pattern: "[0-9A-Z]{12}[0-9]{2}",
                                       enum: nil,
                                       max_length: nil,
-                                      min_length: nil
+                                      min_length: nil,
+                                      fraction_digits: nil,
+                                      total_digits: nil,
+                                      min_inclusive: nil,
+                                      max_inclusive: nil
                                     },
                                     min: 1,
                                     max: 1

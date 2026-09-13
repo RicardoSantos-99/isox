@@ -36,7 +36,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                 pattern: "[M][0-9A-Z]{8}[a-zA-Z0-9]{23}",
                                 enum: nil,
                                 max_length: 32,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -49,7 +53,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                   "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                 enum: nil,
                                 max_length: nil,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -72,7 +80,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                 pattern: "[M][0-9A-Z]{8}[a-zA-Z0-9]{23}",
                                 enum: nil,
                                 max_length: 32,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -98,7 +110,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                       pattern: "[0-9A-Z]{8}",
                                                       enum: nil,
                                                       max_length: 8,
-                                                      min_length: nil
+                                                      min_length: nil,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     min: 1,
                                                     max: 1
@@ -144,7 +160,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                             pattern: nil,
                                             enum: ["BRL"],
                                             max_length: nil,
-                                            min_length: nil
+                                            min_length: nil,
+                                            fraction_digits: nil,
+                                            total_digits: nil,
+                                            min_inclusive: nil,
+                                            max_inclusive: nil
                                           },
                                           required: true
                                         }
@@ -154,7 +174,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                         pattern: nil,
                                         enum: nil,
                                         max_length: nil,
-                                        min_length: nil
+                                        min_length: nil,
+                                        fraction_digits: 2,
+                                        total_digits: 18,
+                                        min_inclusive: "0",
+                                        max_inclusive: nil
                                       }
                                     },
                                     min: 1,
@@ -167,7 +191,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                       pattern: nil,
                                       enum: ["CRDT", "DBIT"],
                                       max_length: nil,
-                                      min_length: nil
+                                      min_length: nil,
+                                      fraction_digits: nil,
+                                      total_digits: nil,
+                                      min_inclusive: nil,
+                                      max_inclusive: nil
                                     },
                                     min: 1,
                                     max: 1
@@ -185,7 +213,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                 pattern: nil,
                                                 enum: ["BOOK", "INFO"],
                                                 max_length: nil,
-                                                min_length: nil
+                                                min_length: nil,
+                                                fraction_digits: nil,
+                                                total_digits: nil,
+                                                min_inclusive: nil,
+                                                max_inclusive: nil
                                               },
                                               min: 1,
                                               max: 1
@@ -214,7 +246,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                 pattern: nil,
                                                 enum: nil,
                                                 max_length: nil,
-                                                min_length: nil
+                                                min_length: nil,
+                                                fraction_digits: nil,
+                                                total_digits: nil,
+                                                min_inclusive: nil,
+                                                max_inclusive: nil
                                               },
                                               min: 1,
                                               max: 1
@@ -244,7 +280,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                   "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                                 enum: nil,
                                                 max_length: nil,
-                                                min_length: nil
+                                                min_length: nil,
+                                                fraction_digits: nil,
+                                                total_digits: nil,
+                                                min_inclusive: nil,
+                                                max_inclusive: nil
                                               },
                                               min: 1,
                                               max: 1
@@ -275,7 +315,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                   pattern: nil,
                                                   enum: ["CAMT", "PMNT"],
                                                   max_length: nil,
-                                                  min_length: nil
+                                                  min_length: nil,
+                                                  fraction_digits: nil,
+                                                  total_digits: nil,
+                                                  min_inclusive: nil,
+                                                  max_inclusive: nil
                                                 },
                                                 min: 1,
                                                 max: 1
@@ -291,7 +335,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                         pattern: nil,
                                                         enum: ["IRCT", "MCOP", "MDOP", "RRCT"],
                                                         max_length: nil,
-                                                        min_length: nil
+                                                        min_length: nil,
+                                                        fraction_digits: nil,
+                                                        total_digits: nil,
+                                                        min_inclusive: nil,
+                                                        max_inclusive: nil
                                                       },
                                                       min: 1,
                                                       max: 1
@@ -303,7 +351,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                         pattern: nil,
                                                         enum: ["DMCT", "NTAV", "RRTN"],
                                                         max_length: nil,
-                                                        min_length: nil
+                                                        min_length: nil,
+                                                        fraction_digits: nil,
+                                                        total_digits: nil,
+                                                        min_inclusive: nil,
+                                                        max_inclusive: nil
                                                       },
                                                       min: 1,
                                                       max: 1
@@ -340,7 +392,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                             pattern: nil,
                                             enum: nil,
                                             max_length: 35,
-                                            min_length: 1
+                                            min_length: 1,
+                                            fraction_digits: nil,
+                                            total_digits: nil,
+                                            min_inclusive: nil,
+                                            max_inclusive: nil
                                           },
                                           min: 1,
                                           max: 1
@@ -372,7 +428,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                           "[E|D][0-9A-Z]{8}[0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][a-zA-Z0-9]{11}",
                                                         enum: nil,
                                                         max_length: 32,
-                                                        min_length: nil
+                                                        min_length: nil,
+                                                        fraction_digits: nil,
+                                                        total_digits: nil,
+                                                        min_inclusive: nil,
+                                                        max_inclusive: nil
                                                       },
                                                       min: 0,
                                                       max: 1
@@ -385,7 +445,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                           "[E|L][0-9A-Z]{8}[0-9]{4}[0-1][0-9][0-3][0-9][0-2][0-9][0-5][0-9][a-zA-Z0-9]{11}",
                                                         enum: nil,
                                                         max_length: 32,
-                                                        min_length: nil
+                                                        min_length: nil,
+                                                        fraction_digits: nil,
+                                                        total_digits: nil,
+                                                        min_inclusive: nil,
+                                                        max_inclusive: nil
                                                       },
                                                       min: 1,
                                                       max: 1
@@ -397,7 +461,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                         pattern: nil,
                                                         enum: nil,
                                                         max_length: 35,
-                                                        min_length: 1
+                                                        min_length: 1,
+                                                        fraction_digits: nil,
+                                                        total_digits: nil,
+                                                        min_inclusive: nil,
+                                                        max_inclusive: nil
                                                       },
                                                       min: 0,
                                                       max: 1
@@ -410,7 +478,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                           "[A-Z]{3}[0-9]{4}[0-1][0-9][0-3][0-9][a-zA-Z0-9]{9}",
                                                         enum: nil,
                                                         max_length: 20,
-                                                        min_length: nil
+                                                        min_length: nil,
+                                                        fraction_digits: nil,
+                                                        total_digits: nil,
+                                                        min_inclusive: nil,
+                                                        max_inclusive: nil
                                                       },
                                                       min: 0,
                                                       max: 1
@@ -426,7 +498,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                               pattern: nil,
                                                               enum: ["ServiceLevel"],
                                                               max_length: nil,
-                                                              min_length: nil
+                                                              min_length: nil,
+                                                              fraction_digits: nil,
+                                                              total_digits: nil,
+                                                              min_inclusive: nil,
+                                                              max_inclusive: nil
                                                             },
                                                             min: 1,
                                                             max: 1
@@ -436,13 +512,13 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                             type: %Isox.Schema.SimpleType{
                                                               base: "string",
                                                               pattern: nil,
-                                                              enum: [
-                                                                "PAGAGD",
-                                                                "PAGFRD",
-                                                                "PAGPRI"
-                                                              ],
+                                                              enum: ["PAGAGD", "PAGFRD", "PAGPRI"],
                                                               max_length: nil,
-                                                              min_length: nil
+                                                              min_length: nil,
+                                                              fraction_digits: nil,
+                                                              total_digits: nil,
+                                                              min_inclusive: nil,
+                                                              max_inclusive: nil
                                                             },
                                                             min: 1,
                                                             max: 1
@@ -508,6 +584,14 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                                                         max_length:
                                                                                                           nil,
                                                                                                         min_length:
+                                                                                                          nil,
+                                                                                                        fraction_digits:
+                                                                                                          nil,
+                                                                                                        total_digits:
+                                                                                                          nil,
+                                                                                                        min_inclusive:
+                                                                                                          nil,
+                                                                                                        max_inclusive:
                                                                                                           nil
                                                                                                       },
                                                                                                     min:
@@ -579,7 +663,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                           pattern: nil,
                                                                           enum: nil,
                                                                           max_length: 140,
-                                                                          min_length: 1
+                                                                          min_length: 1,
+                                                                          fraction_digits: nil,
+                                                                          total_digits: nil,
+                                                                          min_inclusive: nil,
+                                                                          max_inclusive: nil
                                                                         },
                                                                       min: 1,
                                                                       max: 1
@@ -617,6 +705,14 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                                                         max_length:
                                                                                                           nil,
                                                                                                         min_length:
+                                                                                                          nil,
+                                                                                                        fraction_digits:
+                                                                                                          nil,
+                                                                                                        total_digits:
+                                                                                                          nil,
+                                                                                                        min_inclusive:
+                                                                                                          nil,
+                                                                                                        max_inclusive:
                                                                                                           nil
                                                                                                       },
                                                                                                     min:
@@ -691,7 +787,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                               "[0-9A-Z]{1,20}",
                                                                             enum: nil,
                                                                             max_length: nil,
-                                                                            min_length: nil
+                                                                            min_length: nil,
+                                                                            fraction_digits: nil,
+                                                                            total_digits: nil,
+                                                                            min_inclusive: nil,
+                                                                            max_inclusive: nil
                                                                           },
                                                                         min: 1,
                                                                         max: 1
@@ -704,7 +804,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                             pattern: "[0-9]{1,4}",
                                                                             enum: nil,
                                                                             max_length: nil,
-                                                                            min_length: nil
+                                                                            min_length: nil,
+                                                                            fraction_digits: nil,
+                                                                            total_digits: nil,
+                                                                            min_inclusive: nil,
+                                                                            max_inclusive: nil
                                                                           },
                                                                         min: 0,
                                                                         max: 1
@@ -743,7 +847,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                             "TRAN"
                                                                           ],
                                                                           max_length: nil,
-                                                                          min_length: nil
+                                                                          min_length: nil,
+                                                                          fraction_digits: nil,
+                                                                          total_digits: nil,
+                                                                          min_inclusive: nil,
+                                                                          max_inclusive: nil
                                                                         },
                                                                       min: 1,
                                                                       max: 1
@@ -809,6 +917,14 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                                                         max_length:
                                                                                                           nil,
                                                                                                         min_length:
+                                                                                                          nil,
+                                                                                                        fraction_digits:
+                                                                                                          nil,
+                                                                                                        total_digits:
+                                                                                                          nil,
+                                                                                                        min_inclusive:
+                                                                                                          nil,
+                                                                                                        max_inclusive:
                                                                                                           nil
                                                                                                       },
                                                                                                     min:
@@ -883,7 +999,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                               "[0-9A-Z]{1,20}",
                                                                             enum: nil,
                                                                             max_length: nil,
-                                                                            min_length: nil
+                                                                            min_length: nil,
+                                                                            fraction_digits: nil,
+                                                                            total_digits: nil,
+                                                                            min_inclusive: nil,
+                                                                            max_inclusive: nil
                                                                           },
                                                                         min: 1,
                                                                         max: 1
@@ -896,7 +1016,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                             pattern: "[0-9]{1,4}",
                                                                             enum: nil,
                                                                             max_length: nil,
-                                                                            min_length: nil
+                                                                            min_length: nil,
+                                                                            fraction_digits: nil,
+                                                                            total_digits: nil,
+                                                                            min_inclusive: nil,
+                                                                            max_inclusive: nil
                                                                           },
                                                                         min: 0,
                                                                         max: 1
@@ -935,7 +1059,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                             "TRAN"
                                                                           ],
                                                                           max_length: nil,
-                                                                          min_length: nil
+                                                                          min_length: nil,
+                                                                          fraction_digits: nil,
+                                                                          total_digits: nil,
+                                                                          min_inclusive: nil,
+                                                                          max_inclusive: nil
                                                                         },
                                                                       min: 1,
                                                                       max: 1
@@ -962,7 +1090,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                     pattern: nil,
                                                                     enum: nil,
                                                                     max_length: 77,
-                                                                    min_length: 1
+                                                                    min_length: 1,
+                                                                    fraction_digits: nil,
+                                                                    total_digits: nil,
+                                                                    min_inclusive: nil,
+                                                                    max_inclusive: nil
                                                                   },
                                                                   min: 1,
                                                                   max: 1
@@ -1013,7 +1145,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                               "[0-9A-Z]{8}",
                                                                             enum: nil,
                                                                             max_length: 8,
-                                                                            min_length: nil
+                                                                            min_length: nil,
+                                                                            fraction_digits: nil,
+                                                                            total_digits: nil,
+                                                                            min_inclusive: nil,
+                                                                            max_inclusive: nil
                                                                           },
                                                                         min: 1,
                                                                         max: 1
@@ -1060,7 +1196,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                               "[0-9A-Z]{8}",
                                                                             enum: nil,
                                                                             max_length: 8,
-                                                                            min_length: nil
+                                                                            min_length: nil,
+                                                                            fraction_digits: nil,
+                                                                            total_digits: nil,
+                                                                            min_inclusive: nil,
+                                                                            max_inclusive: nil
                                                                           },
                                                                         min: 1,
                                                                         max: 1
@@ -1100,7 +1240,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                 "ContraparteSTR"
                                                               ],
                                                               max_length: nil,
-                                                              min_length: nil
+                                                              min_length: nil,
+                                                              fraction_digits: nil,
+                                                              total_digits: nil,
+                                                              min_inclusive: nil,
+                                                              max_inclusive: nil
                                                             },
                                                             min: 1,
                                                             max: 1
@@ -1129,6 +1273,14 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                                     enum: nil,
                                                                                     max_length: 8,
                                                                                     min_length:
+                                                                                      nil,
+                                                                                    fraction_digits:
+                                                                                      nil,
+                                                                                    total_digits:
+                                                                                      nil,
+                                                                                    min_inclusive:
+                                                                                      nil,
+                                                                                    max_inclusive:
                                                                                       nil
                                                                                   },
                                                                                 min: 1,
@@ -1191,7 +1343,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                               "QRES"
                                                             ],
                                                             max_length: nil,
-                                                            min_length: nil
+                                                            min_length: nil,
+                                                            fraction_digits: nil,
+                                                            total_digits: nil,
+                                                            min_inclusive: nil,
+                                                            max_inclusive: nil
                                                           },
                                                           min: 1,
                                                           max: 1
@@ -1226,7 +1382,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                               "REFU"
                                                             ],
                                                             max_length: nil,
-                                                            min_length: nil
+                                                            min_length: nil,
+                                                            fraction_digits: nil,
+                                                            total_digits: nil,
+                                                            min_inclusive: nil,
+                                                            max_inclusive: nil
                                                           },
                                                           min: 1,
                                                           max: 1
@@ -1253,7 +1413,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                         pattern: nil,
                                                         enum: nil,
                                                         max_length: 140,
-                                                        min_length: 1
+                                                        min_length: 1,
+                                                        fraction_digits: nil,
+                                                        total_digits: nil,
+                                                        min_inclusive: nil,
+                                                        max_inclusive: nil
                                                       },
                                                       min: 0,
                                                       max: 1
@@ -1293,6 +1457,14 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                                         max_length:
                                                                                           nil,
                                                                                         min_length:
+                                                                                          nil,
+                                                                                        fraction_digits:
+                                                                                          nil,
+                                                                                        total_digits:
+                                                                                          nil,
+                                                                                        min_inclusive:
+                                                                                          nil,
+                                                                                        max_inclusive:
                                                                                           nil
                                                                                       },
                                                                                     min: 1,
@@ -1318,7 +1490,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                               "[0-9A-Z]{8}",
                                                                             enum: nil,
                                                                             max_length: 8,
-                                                                            min_length: nil
+                                                                            min_length: nil,
+                                                                            fraction_digits: nil,
+                                                                            total_digits: nil,
+                                                                            min_inclusive: nil,
+                                                                            max_inclusive: nil
                                                                           },
                                                                         min: 1,
                                                                         max: 1
@@ -1358,12 +1534,18 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                                     base:
                                                                                       "string",
                                                                                     pattern: nil,
-                                                                                    enum: [
-                                                                                      "BRL"
-                                                                                    ],
+                                                                                    enum: ["BRL"],
                                                                                     max_length:
                                                                                       nil,
                                                                                     min_length:
+                                                                                      nil,
+                                                                                    fraction_digits:
+                                                                                      nil,
+                                                                                    total_digits:
+                                                                                      nil,
+                                                                                    min_inclusive:
+                                                                                      nil,
+                                                                                    max_inclusive:
                                                                                       nil
                                                                                   },
                                                                                 required: true
@@ -1375,7 +1557,13 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                                 pattern: nil,
                                                                                 enum: nil,
                                                                                 max_length: nil,
-                                                                                min_length: nil
+                                                                                min_length: nil,
+                                                                                fraction_digits:
+                                                                                  2,
+                                                                                total_digits: 18,
+                                                                                min_inclusive:
+                                                                                  "0",
+                                                                                max_inclusive: nil
                                                                               }
                                                                           },
                                                                         min: 1,
@@ -1387,12 +1575,13 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                           %Isox.Schema.SimpleType{
                                                                             base: "string",
                                                                             pattern: nil,
-                                                                            enum: [
-                                                                              "VLCP",
-                                                                              "VLDN"
-                                                                            ],
+                                                                            enum: ["VLCP", "VLDN"],
                                                                             max_length: nil,
-                                                                            min_length: nil
+                                                                            min_length: nil,
+                                                                            fraction_digits: nil,
+                                                                            total_digits: nil,
+                                                                            min_inclusive: nil,
+                                                                            max_inclusive: nil
                                                                           },
                                                                         min: 1,
                                                                         max: 1
@@ -1437,7 +1626,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                           "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                                         enum: nil,
                                                         max_length: nil,
-                                                        min_length: nil
+                                                        min_length: nil,
+                                                        fraction_digits: nil,
+                                                        total_digits: nil,
+                                                        min_inclusive: nil,
+                                                        max_inclusive: nil
                                                       },
                                                       min: 1,
                                                       max: 1
@@ -1460,7 +1653,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                         pattern: "[a-zA-Z0-9]{1,50}",
                                                         enum: nil,
                                                         max_length: nil,
-                                                        min_length: nil
+                                                        min_length: nil,
+                                                        fraction_digits: nil,
+                                                        total_digits: nil,
+                                                        min_inclusive: nil,
+                                                        max_inclusive: nil
                                                       },
                                                       min: 0,
                                                       max: 1
@@ -1476,7 +1673,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                               pattern: nil,
                                                               enum: ["CBSSPLIT", "IBSSPLIT"],
                                                               max_length: nil,
-                                                              min_length: nil
+                                                              min_length: nil,
+                                                              fraction_digits: nil,
+                                                              total_digits: nil,
+                                                              min_inclusive: nil,
+                                                              max_inclusive: nil
                                                             },
                                                             min: 1,
                                                             max: 1
@@ -1488,7 +1689,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                               pattern: nil,
                                                               enum: ["INF"],
                                                               max_length: nil,
-                                                              min_length: nil
+                                                              min_length: nil,
+                                                              fraction_digits: nil,
+                                                              total_digits: nil,
+                                                              min_inclusive: nil,
+                                                              max_inclusive: nil
                                                             },
                                                             min: 1,
                                                             max: 1
@@ -1510,7 +1715,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                             pattern: nil,
                                                                             enum: ["BRL"],
                                                                             max_length: nil,
-                                                                            min_length: nil
+                                                                            min_length: nil,
+                                                                            fraction_digits: nil,
+                                                                            total_digits: nil,
+                                                                            min_inclusive: nil,
+                                                                            max_inclusive: nil
                                                                           },
                                                                         required: true
                                                                       }
@@ -1520,7 +1729,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                       pattern: nil,
                                                                       enum: nil,
                                                                       max_length: nil,
-                                                                      min_length: nil
+                                                                      min_length: nil,
+                                                                      fraction_digits: 2,
+                                                                      total_digits: 18,
+                                                                      min_inclusive: "0",
+                                                                      max_inclusive: nil
                                                                     }
                                                                   },
                                                                   min: 1,
@@ -1567,7 +1780,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                                 "SL02"
                                                               ],
                                                               max_length: nil,
-                                                              min_length: nil
+                                                              min_length: nil,
+                                                              fraction_digits: nil,
+                                                              total_digits: nil,
+                                                              min_inclusive: nil,
+                                                              max_inclusive: nil
                                                             },
                                                             min: 1,
                                                             max: 1
@@ -1586,7 +1803,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                         pattern: nil,
                                                         enum: nil,
                                                         max_length: 105,
-                                                        min_length: 1
+                                                        min_length: 1,
+                                                        fraction_digits: nil,
+                                                        total_digits: nil,
+                                                        min_inclusive: nil,
+                                                        max_inclusive: nil
                                                       },
                                                       min: 0,
                                                       max: 1
@@ -1605,7 +1826,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                                   pattern: nil,
                                                   enum: ["HIGH", "NORM"],
                                                   max_length: nil,
-                                                  min_length: nil
+                                                  min_length: nil,
+                                                  fraction_digits: nil,
+                                                  total_digits: nil,
+                                                  min_inclusive: nil,
+                                                  max_inclusive: nil
                                                 },
                                                 min: 0,
                                                 max: 1
@@ -1631,7 +1856,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                       pattern: nil,
                                       enum: nil,
                                       max_length: 4,
-                                      min_length: 1
+                                      min_length: 1,
+                                      fraction_digits: nil,
+                                      total_digits: nil,
+                                      min_inclusive: nil,
+                                      max_inclusive: nil
                                     },
                                     min: 0,
                                     max: 1
@@ -1650,7 +1879,11 @@ defmodule Isox.Generated.Camt054.V1_16 do
                                 pattern: nil,
                                 enum: nil,
                                 max_length: 105,
-                                min_length: 1
+                                min_length: 1,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 0,
                               max: 1

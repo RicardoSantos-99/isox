@@ -64,6 +64,34 @@ defmodule Isox.Xsd.CompilerTest do
     assert type == %SimpleType{base: "string", pattern: "[A-Z]{4}", max_length: 4}
   end
 
+  test "simpleType decimal com fractionDigits, totalDigits e minInclusive" do
+    assert %Element{type: %ComplexType{content: [%Element{type: type}]}} =
+             root("""
+             <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="ns">
+               <xs:element name="Envelope" type="T"/>
+               <xs:complexType name="T">
+                 <xs:sequence>
+                   <xs:element name="Valor" type="ValorType"/>
+                 </xs:sequence>
+               </xs:complexType>
+               <xs:simpleType name="ValorType">
+                 <xs:restriction base="xs:decimal">
+                   <xs:fractionDigits value="2"/>
+                   <xs:totalDigits value="18"/>
+                   <xs:minInclusive value="0"/>
+                 </xs:restriction>
+               </xs:simpleType>
+             </xs:schema>
+             """)
+
+    assert type == %SimpleType{
+             base: "decimal",
+             fraction_digits: 2,
+             total_digits: 18,
+             min_inclusive: "0"
+           }
+  end
+
   test "enumeração com múltiplos valores" do
     assert %Element{type: %ComplexType{content: [%Element{type: type}]}} =
              root("""

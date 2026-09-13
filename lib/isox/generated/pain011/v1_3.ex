@@ -36,7 +36,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                 pattern: "[M][0-9A-Z]{8}[a-zA-Z0-9]{23}",
                                 enum: nil,
                                 max_length: 32,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -49,7 +53,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                   "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                 enum: nil,
                                 max_length: nil,
-                                min_length: nil
+                                min_length: nil,
+                                fraction_digits: nil,
+                                total_digits: nil,
+                                min_inclusive: nil,
+                                max_inclusive: nil
                               },
                               min: 1,
                               max: 1
@@ -73,7 +81,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                   pattern: "[0-9A-Z]{8}",
                                                   enum: nil,
                                                   max_length: 8,
-                                                  min_length: nil
+                                                  min_length: nil,
+                                                  fraction_digits: nil,
+                                                  total_digits: nil,
+                                                  min_inclusive: nil,
+                                                  max_inclusive: nil
                                                 },
                                                 min: 1,
                                                 max: 1
@@ -140,7 +152,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                                     "[0-9]{11}|[0-9A-Z]{12}[0-9]{2}",
                                                                   enum: nil,
                                                                   max_length: nil,
-                                                                  min_length: nil
+                                                                  min_length: nil,
+                                                                  fraction_digits: nil,
+                                                                  total_digits: nil,
+                                                                  min_inclusive: nil,
+                                                                  max_inclusive: nil
                                                                 },
                                                                 min: 1,
                                                                 max: 1
@@ -200,7 +216,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                               "SLDB"
                                             ],
                                             max_length: nil,
-                                            min_length: nil
+                                            min_length: nil,
+                                            fraction_digits: nil,
+                                            total_digits: nil,
+                                            min_inclusive: nil,
+                                            max_inclusive: nil
                                           },
                                           min: 1,
                                           max: 1
@@ -237,7 +257,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                   "[R|C][R|N][0-9A-Z]{8}[0-9]{4}[0-1][0-9][0-3][0-9][a-zA-Z0-9]{11}",
                                                 enum: nil,
                                                 max_length: nil,
-                                                min_length: nil
+                                                min_length: nil,
+                                                fraction_digits: nil,
+                                                total_digits: nil,
+                                                min_inclusive: nil,
+                                                max_inclusive: nil
                                               },
                                               min: 1,
                                               max: 1
@@ -250,7 +274,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                   "[I][C][0-9A-Z]{8}[0-9]{4}[0-1][0-9][0-3][0-9][a-zA-Z0-9]{11}",
                                                 enum: nil,
                                                 max_length: nil,
-                                                min_length: nil
+                                                min_length: nil,
+                                                fraction_digits: nil,
+                                                total_digits: nil,
+                                                min_inclusive: nil,
+                                                max_inclusive: nil
                                               },
                                               min: 1,
                                               max: 1
@@ -266,7 +294,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                       pattern: nil,
                                                       enum: ["RCUR"],
                                                       max_length: nil,
-                                                      min_length: nil
+                                                      min_length: nil,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     min: 1,
                                                     max: 1
@@ -290,7 +322,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                                   "YEAR"
                                                                 ],
                                                                 max_length: nil,
-                                                                min_length: nil
+                                                                min_length: nil,
+                                                                fraction_digits: nil,
+                                                                total_digits: nil,
+                                                                min_inclusive: nil,
+                                                                max_inclusive: nil
                                                               },
                                                               min: 1,
                                                               max: 1
@@ -313,7 +349,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                       pattern: nil,
                                                       enum: nil,
                                                       max_length: nil,
-                                                      min_length: nil
+                                                      min_length: nil,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     min: 1,
                                                     max: 1
@@ -325,7 +365,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                       pattern: nil,
                                                       enum: nil,
                                                       max_length: nil,
-                                                      min_length: nil
+                                                      min_length: nil,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     min: 0,
                                                     max: 1
@@ -344,7 +388,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                 pattern: nil,
                                                 enum: nil,
                                                 max_length: nil,
-                                                min_length: nil
+                                                min_length: nil,
+                                                fraction_digits: nil,
+                                                total_digits: nil,
+                                                min_inclusive: nil,
+                                                max_inclusive: nil
                                               },
                                               min: 1,
                                               max: 1
@@ -361,7 +409,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                       pattern: nil,
                                                       enum: ["BRL"],
                                                       max_length: nil,
-                                                      min_length: nil
+                                                      min_length: nil,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     required: true
                                                   }
@@ -371,7 +423,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                   pattern: nil,
                                                   enum: nil,
                                                   max_length: nil,
-                                                  min_length: nil
+                                                  min_length: nil,
+                                                  fraction_digits: 2,
+                                                  total_digits: 18,
+                                                  min_inclusive: "0",
+                                                  max_inclusive: nil
                                                 }
                                               },
                                               min: 0,
@@ -388,7 +444,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                       pattern: nil,
                                                       enum: nil,
                                                       max_length: 140,
-                                                      min_length: 1
+                                                      min_length: 1,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     min: 1,
                                                     max: 1
@@ -417,7 +477,13 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                                                   "[0-9]{11}|[0-9A-Z]{12}[0-9]{2}",
                                                                                 enum: nil,
                                                                                 max_length: nil,
-                                                                                min_length: nil
+                                                                                min_length: nil,
+                                                                                fraction_digits:
+                                                                                  nil,
+                                                                                total_digits: nil,
+                                                                                min_inclusive:
+                                                                                  nil,
+                                                                                max_inclusive: nil
                                                                               },
                                                                             min: 1,
                                                                             max: 1
@@ -473,7 +539,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                                   pattern: "[0-9A-Z]{8}",
                                                                   enum: nil,
                                                                   max_length: 8,
-                                                                  min_length: nil
+                                                                  min_length: nil,
+                                                                  fraction_digits: nil,
+                                                                  total_digits: nil,
+                                                                  min_inclusive: nil,
+                                                                  max_inclusive: nil
                                                                 },
                                                                 min: 1,
                                                                 max: 1
@@ -527,7 +597,13 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                                                   "[0-9]{11}|[0-9A-Z]{12}[0-9]{2}",
                                                                                 enum: nil,
                                                                                 max_length: nil,
-                                                                                min_length: nil
+                                                                                min_length: nil,
+                                                                                fraction_digits:
+                                                                                  nil,
+                                                                                total_digits: nil,
+                                                                                min_inclusive:
+                                                                                  nil,
+                                                                                max_inclusive: nil
                                                                               },
                                                                             min: 1,
                                                                             max: 1
@@ -585,7 +661,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                                       pattern: "[0-9]{1,20}",
                                                                       enum: nil,
                                                                       max_length: nil,
-                                                                      min_length: nil
+                                                                      min_length: nil,
+                                                                      fraction_digits: nil,
+                                                                      total_digits: nil,
+                                                                      min_inclusive: nil,
+                                                                      max_inclusive: nil
                                                                     },
                                                                     min: 1,
                                                                     max: 1
@@ -597,7 +677,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                                       pattern: "[0-9]{1,4}",
                                                                       enum: nil,
                                                                       max_length: nil,
-                                                                      min_length: nil
+                                                                      min_length: nil,
+                                                                      fraction_digits: nil,
+                                                                      total_digits: nil,
+                                                                      min_inclusive: nil,
+                                                                      max_inclusive: nil
                                                                     },
                                                                     min: 0,
                                                                     max: 1
@@ -646,7 +730,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                                   pattern: "[0-9A-Z]{8}",
                                                                   enum: nil,
                                                                   max_length: 8,
-                                                                  min_length: nil
+                                                                  min_length: nil,
+                                                                  fraction_digits: nil,
+                                                                  total_digits: nil,
+                                                                  min_inclusive: nil,
+                                                                  max_inclusive: nil
                                                                 },
                                                                 min: 1,
                                                                 max: 1
@@ -683,7 +771,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                       pattern: nil,
                                                       enum: nil,
                                                       max_length: 140,
-                                                      min_length: 1
+                                                      min_length: 1,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     min: 1,
                                                     max: 1
@@ -712,7 +804,13 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                                                   "[0-9]{11}|[0-9A-Z]{12}[0-9]{2}",
                                                                                 enum: nil,
                                                                                 max_length: nil,
-                                                                                min_length: nil
+                                                                                min_length: nil,
+                                                                                fraction_digits:
+                                                                                  nil,
+                                                                                total_digits: nil,
+                                                                                min_inclusive:
+                                                                                  nil,
+                                                                                max_inclusive: nil
                                                                               },
                                                                             min: 1,
                                                                             max: 1
@@ -760,7 +858,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                       pattern: nil,
                                                       enum: nil,
                                                       max_length: 35,
-                                                      min_length: 1
+                                                      min_length: 1,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     min: 1,
                                                     max: 1
@@ -772,7 +874,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                       pattern: nil,
                                                       enum: nil,
                                                       max_length: 35,
-                                                      min_length: 1
+                                                      min_length: 1,
+                                                      fraction_digits: nil,
+                                                      total_digits: nil,
+                                                      min_inclusive: nil,
+                                                      max_inclusive: nil
                                                     },
                                                     min: 0,
                                                     max: 1
@@ -821,7 +927,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                   pattern: nil,
                                                   enum: ["CLTN", "CRTN"],
                                                   max_length: nil,
-                                                  min_length: nil
+                                                  min_length: nil,
+                                                  fraction_digits: nil,
+                                                  total_digits: nil,
+                                                  min_inclusive: nil,
+                                                  max_inclusive: nil
                                                 },
                                                 min: 1,
                                                 max: 1
@@ -834,7 +944,11 @@ defmodule Isox.Generated.Pain011.V1_3 do
                                                     "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z",
                                                   enum: nil,
                                                   max_length: nil,
-                                                  min_length: nil
+                                                  min_length: nil,
+                                                  fraction_digits: nil,
+                                                  total_digits: nil,
+                                                  min_inclusive: nil,
+                                                  max_inclusive: nil
                                                 },
                                                 min: 1,
                                                 max: 1
