@@ -41,6 +41,46 @@ defmodule Isox.Camt025Test do
     refute xml =~ "StsRsn"
   end
 
+  test "rejeição com motivo, sem informação adicional (caso mais comum)" do
+    message = %Camt025{
+      msg_id: "M123456780123456789abcdefghijklm",
+      created_at: DateTime.utc_now() |> DateTime.truncate(:millisecond),
+      confirmations: [
+        %{
+          orgnl_msg_id: "M123456780123456789abcdefghijklo",
+          orgnl_pmt_id: "D12345678202609121030abcdefghijk",
+          sts: "RJCT",
+          rsn_prtry: "AM01"
+        }
+      ]
+    }
+
+    assert {:ok, xml} = Camt025.encode(message, @header, :v1_0)
+    assert {:ok, de_volta, :v1_0} = Camt025.decode(xml)
+    assert [confirmation] = de_volta.confirmations
+    assert confirmation.rsn_prtry == "AM01"
+    assert confirmation.addtl_inf == nil
+    refute xml =~ "AddtlInf"
+  end
+
+  test "informação adicional sem motivo é rejeitada (StsRsn exige Rsn)" do
+    message = %Camt025{
+      msg_id: "M123456780123456789abcdefghijklm",
+      created_at: DateTime.utc_now() |> DateTime.truncate(:millisecond),
+      confirmations: [
+        %{
+          orgnl_msg_id: "M123456780123456789abcdefghijklo",
+          orgnl_pmt_id: "D12345678202609121030abcdefghijk",
+          sts: "RJCT",
+          addtl_inf: "fora do prazo de recência"
+        }
+      ]
+    }
+
+    assert {:error, reason} = Camt025.encode(message, @header, :v1_0)
+    assert reason =~ "rsn_prtry"
+  end
+
   test "várias confirmações, uma rejeitada com motivo e informação adicional" do
     message = %Camt025{
       msg_id: "M123456780123456789abcdefghijklm",

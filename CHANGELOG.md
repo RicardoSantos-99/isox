@@ -43,6 +43,15 @@ Primeira versão pública.
 
 ### Corrigido
 
+- `Camt025`: `StsRsn.AddtlInf` (opcional) estava sendo tratado como
+  incondicional e `StsRsn.Rsn` (obrigatório no schema sempre que
+  `StsRsn` aparece) como condicional — o inverso do XSD real. Na prática
+  só se manifestava com `addtl_inf` presente e `rsn_prtry` ausente:
+  virava um erro confuso de round-trip (`"elemento obrigatório ausente:
+  Rsn"`) em vez de uma mensagem clara. `encode/3` agora valida isso
+  explicitamente antes de montar o XML. Achado no deep dive de validação
+  do catálogo (issue #40, camt.025).
+
 - Validação de valor decimal (`fractionDigits`/`totalDigits`/`minInclusive`/
   `maxInclusive` do XSD, ex.: `ActiveCurrencyAndAmount_SimpleType`): não
   existia — um valor monetário negativo, com casas decimais a mais, com

@@ -6,6 +6,12 @@ defmodule Isox.Camt025 do
 
   Cada confirmação correlaciona com um trck.002 por `OrgnlMsgId`/
   `OrgnlPmtId` e traz um status (aceite/rejeição), com motivo opcional.
+
+  `StsRsn` (o bloco de motivo) é preenchido quando `Sts.Cd == "RJCT"`
+  (planilha do catálogo): `rsn_prtry` é quem decide se o bloco aparece
+  — `Rsn` é obrigatório dentro dele no schema real, `AddtlInf` que é
+  opcional. `addtl_inf` sem `rsn_prtry` é rejeitado explicitamente
+  (`encode/3`), já que não tem como virar `StsRsn` válido sem `Rsn`.
   """
 
   alias Isox.AppHdr
@@ -37,7 +43,8 @@ defmodule Isox.Camt025 do
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
   @spec encode(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
   def encode(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_0] do
-    with :ok <- validate_required(message) do
+    with :ok <- validate_required(message),
+         :ok <- validate_confirmations(message.confirmations) do
       module = Map.fetch!(@module_by_version, version)
 
       term = %{
@@ -81,6 +88,29 @@ defmodule Isox.Camt025 do
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
+  # StsRsn.Rsn é obrigatório sempre que StsRsn aparece no schema real —
+  # AddtlInf é o campo opcional, não o contrário. addtl_inf sem
+  # rsn_prtry não tem como virar XML válido (StsRsn exigiria Rsn), mas
+  # sem esta checagem o erro só aparecia depois, no round-trip de
+  # confirm/2, como "elemento obrigatório ausente: Rsn" — confuso pra
+  # quem não conhece a árvore XML interna.
+  defp validate_confirmations(confirmations) do
+    Enum.reduce_while(confirmations, :ok, fn c, :ok ->
+      case validate_confirmation(c) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_confirmation(c) do
+    if Map.get(c, :addtl_inf) != nil and Map.get(c, :rsn_prtry) == nil do
+      {:error, "confirmação com addtl_inf mas sem rsn_prtry: StsRsn exige Rsn quando presente"}
+    else
+      :ok
+    end
+  end
+
   defp document_term(m) do
     %{
       "Rct" => %{
@@ -101,13 +131,12 @@ defmodule Isox.Camt025 do
   end
 
   defp sts_rsn_term(c) do
-    rsn_prtry = Map.get(c, :rsn_prtry)
-    addtl_inf = Map.get(c, :addtl_inf)
+    case Map.get(c, :rsn_prtry) do
+      nil ->
+        nil
 
-    if rsn_prtry == nil and addtl_inf == nil do
-      nil
-    else
-      %{"AddtlInf" => addtl_inf} |> maybe_put("Rsn", if(rsn_prtry, do: %{"Prtry" => rsn_prtry}))
+      rsn_prtry ->
+        %{"Rsn" => %{"Prtry" => rsn_prtry}} |> maybe_put("AddtlInf", Map.get(c, :addtl_inf))
     end
   end
 
