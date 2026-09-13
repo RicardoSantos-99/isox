@@ -24,6 +24,13 @@ defmodule Isox.Admi004Test do
     assert reason =~ "description"
   end
 
+  test "descrição com mais de 1000 caracteres é rejeitada" do
+    message = %Admi004{description: String.duplicate("a", 1001)}
+
+    assert {:error, reason} = Admi004.encode(message, @header, :v1_2)
+    assert reason =~ "1000"
+  end
+
   test "parse rejeita XML de outra mensagem" do
     outro_xml = """
     <?xml version="1.0" encoding="UTF-8"?>
