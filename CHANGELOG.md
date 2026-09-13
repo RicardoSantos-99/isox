@@ -43,6 +43,23 @@ Primeira versão pública.
 
 ### Corrigido
 
+- `Reda022`: a moduledoc dizia que `Mod` era `max: ilimitado`, mas o
+  schema real da BCB exige exatamente 4 (`minOccurs="4"
+  maxOccurs="4"`) — sempre as 4 modificações juntas (contato, diretor,
+  endereço técnico, CPF do diretor), nunca um subconjunto, confirmado
+  pelo único exemplo oficial do catálogo. `encode/3` agora valida essa
+  composição exata (4 itens, um de cada tipo) com mensagem clara, em
+  vez de deixar o `confirm/2` (round-trip) rejeitar com um erro de XML
+  de baixo nível. Também corrigido: `Rspnsblty` é fixo por tipo
+  (`"CONTATOPSP"` em `:contact`, `"DIRETORPSP"` em `:director`,
+  conforme a planilha do catálogo), mas nada garantia que o valor
+  certo fosse usado no ramo certo — o schema só valida que é um dos 2
+  valores do enum, não a correspondência com o tipo; dava pra montar,
+  por exemplo, um `:contact` com `"DIRETORPSP"` sem erro nenhum. Agora
+  `encode/3` valida essa correspondência também. Achado no deep dive de
+  validação do catálogo (issue #60, reda.022).
+
+
 - `Reda016`: nada validava a regra cruzada entre `sts`, `rsn_prtry` e
   `sys_pty_ispb` — dava pra montar um `"COMP"` (sucesso) sem
   `SysPtyId` (mesmo a planilha do catálogo exigindo explicitamente:

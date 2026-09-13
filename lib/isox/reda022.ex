@@ -7,11 +7,17 @@ defmodule Isox.Reda022 do
   `ReqdModContato` e `ReqdModDiretor`, que compartilham a maioria das
   tags — só `Nm` distingue), `TechAdr` e `MktSpcfcAttr`.
 
-  `Mod` é `max: ilimitado` de verdade — uma mensagem pode carregar várias
-  alterações de uma vez — modelado como lista de mapas com `:type`
-  (`:contact`, `:director`, `:tech_adr` ou `:mkt_spcfc_attr`) dizendo qual
-  variante de `ReqdMod` é. `ScpIndctn` (enum de valor único `"INSE"`) e
+  `Mod` é `[4..4]` no schema real (exatamente 4, não `ilimitado`) —
+  sempre as 4 modificações juntas, uma de cada tipo (`:contact`,
+  `:director`, `:tech_adr`, `:mkt_spcfc_attr`), nunca um subconjunto.
+  Modelado como lista de mapas com `:type` dizendo qual variante de
+  `ReqdMod` é. `ScpIndctn` (enum de valor único `"INSE"`) e
   `MktSpcfcAttr.Nm` (enum de valor único `"CPFDIRETOR"`) ficam fixos.
+  `Rspnsblty` também é fixo por tipo (`"CONTATOPSP"` em `:contact`,
+  `"DIRETORPSP"` em `:director`) — o schema só garante que é um dos 2
+  valores do enum, não que é o valor certo pro ramo; `encode/3` valida
+  isso, junto com a composição exata de `mod` (4 itens, um de cada
+  tipo).
   """
 
   alias Isox.AppHdr
@@ -56,7 +62,8 @@ defmodule Isox.Reda022 do
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
   @spec encode(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
   def encode(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_4] do
-    with :ok <- validate_required(message) do
+    with :ok <- validate_required(message),
+         :ok <- validate_mod(message.mod) do
       module = Map.fetch!(@module_by_version, version)
 
       term = %{
@@ -99,6 +106,50 @@ defmodule Isox.Reda022 do
       do: :ok,
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
+
+  @mod_types [:contact, :director, :tech_adr, :mkt_spcfc_attr]
+
+  defp validate_mod(mod) do
+    types = Enum.map(mod, & &1.type)
+
+    cond do
+      length(mod) != 4 ->
+        {:error,
+         "mod: esperado exatamente 4 modificações (uma de cada tipo), vieram #{length(mod)}"}
+
+      Enum.sort(types) != Enum.sort(@mod_types) ->
+        {:error,
+         "mod: esperado exatamente uma modificação de cada tipo #{inspect(@mod_types)}, vieram #{inspect(types)}"}
+
+      true ->
+        validate_all_rspnsblty(mod)
+    end
+  end
+
+  defp validate_all_rspnsblty(mod) do
+    Enum.reduce_while(mod, :ok, fn m, :ok ->
+      case validate_rspnsblty(m) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_rspnsblty(%{type: :contact, rspnsblty: "CONTATOPSP"}), do: :ok
+
+  defp validate_rspnsblty(%{type: :contact, rspnsblty: rspnsblty}) do
+    {:error,
+     "rspnsblty deve ser \"CONTATOPSP\" quando type: :contact, veio #{inspect(rspnsblty)}"}
+  end
+
+  defp validate_rspnsblty(%{type: :director, rspnsblty: "DIRETORPSP"}), do: :ok
+
+  defp validate_rspnsblty(%{type: :director, rspnsblty: rspnsblty}) do
+    {:error,
+     "rspnsblty deve ser \"DIRETORPSP\" quando type: :director, veio #{inspect(rspnsblty)}"}
+  end
+
+  defp validate_rspnsblty(_m), do: :ok
 
   defp document_term(m) do
     %{

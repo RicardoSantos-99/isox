@@ -54,9 +54,37 @@ defmodule Isox.Reda022Test do
     assert xml =~ "<Nm>CPFDIRETOR</Nm>"
   end
 
-  test "menos de 4 modificações é rejeitado (Mod exige ao menos 4 no schema real)" do
+  test "menos de 4 modificações é rejeitado (Mod exige exatamente 4 no schema real)" do
     assert {:error, reason} = Reda022.encode(message([@contact]), @header, :v1_4)
-    assert reason =~ "Mod"
+    assert reason =~ "mod"
+  end
+
+  test "mais de 4 modificações é rejeitado" do
+    mod = [@contact, @director, @tech_adr, @mkt_spcfc_attr, @tech_adr]
+    assert {:error, reason} = Reda022.encode(message(mod), @header, :v1_4)
+    assert reason =~ "mod"
+  end
+
+  test "4 modificações mas com tipo repetido (faltando algum) é rejeitado" do
+    mod = [@contact, @contact, @tech_adr, @mkt_spcfc_attr]
+    assert {:error, reason} = Reda022.encode(message(mod), @header, :v1_4)
+    assert reason =~ "mod"
+  end
+
+  test "rspnsblty errado pro tipo (contact com DIRETORPSP) é rejeitado" do
+    contact_errado = %{@contact | rspnsblty: "DIRETORPSP"}
+    mod = [contact_errado, @director, @tech_adr, @mkt_spcfc_attr]
+
+    assert {:error, reason} = Reda022.encode(message(mod), @header, :v1_4)
+    assert reason =~ "rspnsblty"
+  end
+
+  test "rspnsblty errado pro tipo (director com CONTATOPSP) é rejeitado" do
+    director_errado = %{@director | rspnsblty: "CONTATOPSP"}
+    mod = [@contact, director_errado, @tech_adr, @mkt_spcfc_attr]
+
+    assert {:error, reason} = Reda022.encode(message(mod), @header, :v1_4)
+    assert reason =~ "rspnsblty"
   end
 
   test "parse rejeita XML de outra mensagem" do
