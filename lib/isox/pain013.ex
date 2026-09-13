@@ -13,7 +13,21 @@ defmodule Isox.Pain013 do
   `SvcLvl.Prtry` ("PAGAGD"), `LclInstrm.Prtry` ("AUTO") e `ChrgBr`
   ("SLEV"). Valor vai em `Amt/InstdAmt`, não `IntrBkSttlmAmt` — ainda não
   liquidado. `Purp` aqui é `Prtry` (enum próprio), não `Cd` como no
-  `Pacs008`. `Tax` fica de fora, mesma razão dos outros (ramo raro).
+  `Pacs008`. `Tax` aqui é usado (bloco de Split Payment — divisão de IBS/CBS da
+  reforma tributária).
+
+  `ReqdExctnDt` é opcional no schema, mas obrigatório na prática quando
+  `purp_prtry == "AGND"` (agendamento futuro) e proibido quando
+  `"NTAG"`/`"RIFL"` (reenvio/retentativa, execução imediata) — regra da
+  planilha do catálogo (BCB), confirmada nos 4 exemplos oficiais.
+  `encode/3` valida isso.
+
+  `Tax` é opcional e só permitido quando `dbtr_cpf_cnpj` é CNPJ (14
+  caracteres). Cada tipo de tributo em `tax_records` precisa de um
+  `Record` com `ctgy: "INF"` (informado pelo recebedor) e opcionalmente
+  outro com `ctgy: "COR"` (valor corrigido pela Plataforma Pública, tem
+  prioridade sobre o INF quando presente); a soma dos valores efetivos
+  não pode exceder `value`. `encode/3` valida tudo isso.
   """
 
   alias Isox.AppHdr
@@ -41,9 +55,12 @@ defmodule Isox.Pain013 do
     :cdtr_acct_issr,
     :cdtr_acct_type,
     :purp_prtry,
-    :rmt_inf
+    :rmt_inf,
+    :tax_ref_nb,
+    tax_records: []
   ]
 
+  @type tax_record :: %{tp: String.t(), ctgy: String.t(), ttl_amt: String.t()}
   @type t :: %__MODULE__{}
 
   @required_fields [
@@ -83,6 +100,7 @@ defmodule Isox.Pain013 do
   def encode([%__MODULE__{} | _] = messages, %AppHdr{} = header, version)
       when version in [:v2_2] do
     with :ok <- validate_all_required(messages),
+         :ok <- validate_all_business_rules(messages),
          :ok <- validate_shared_header(messages) do
       module = Map.fetch!(@module_by_version, version)
       [first | _] = messages
@@ -141,6 +159,107 @@ defmodule Isox.Pain013 do
       do: :ok,
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
+
+  defp validate_all_business_rules(messages) do
+    Enum.reduce_while(messages, :ok, fn message, :ok ->
+      case validate_business_rules(message) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_business_rules(message) do
+    with :ok <- validate_reqd_exctn_dt(message) do
+      validate_tax(message)
+    end
+  end
+
+  defp validate_reqd_exctn_dt(%{purp_prtry: "AGND", reqd_exctn_dt: nil}) do
+    {:error, "reqd_exctn_dt é obrigatório quando purp_prtry = \"AGND\""}
+  end
+
+  defp validate_reqd_exctn_dt(%{purp_prtry: purp, reqd_exctn_dt: dt})
+       when purp in ["NTAG", "RIFL"] and not is_nil(dt) do
+    {:error, "reqd_exctn_dt não deve ser preenchido quando purp_prtry = #{inspect(purp)}"}
+  end
+
+  defp validate_reqd_exctn_dt(_message), do: :ok
+
+  defp validate_tax(%{tax_records: []}), do: :ok
+
+  defp validate_tax(message) do
+    with :ok <- validate_tax_requires_cnpj(message),
+         :ok <- validate_tax_inf_per_type(message) do
+      validate_tax_sum(message)
+    end
+  end
+
+  defp validate_tax_requires_cnpj(%{dbtr_cpf_cnpj: cpf_cnpj}) do
+    if is_binary(cpf_cnpj) and String.length(cpf_cnpj) == 14 do
+      :ok
+    else
+      {:error,
+       "tax_records (Split Payment) só é permitido quando dbtr_cpf_cnpj é CNPJ (14 caracteres)"}
+    end
+  end
+
+  defp validate_tax_inf_per_type(%{tax_records: tax_records}) do
+    missing =
+      tax_records
+      |> Enum.map(& &1.tp)
+      |> Enum.uniq()
+      |> Enum.reject(fn tp -> Enum.any?(tax_records, &(&1.tp == tp and &1.ctgy == "INF")) end)
+
+    if missing == [] do
+      :ok
+    else
+      {:error, "tax_records: falta Record com ctgy \"INF\" para o(s) tipo(s) #{inspect(missing)}"}
+    end
+  end
+
+  defp validate_tax_sum(%{tax_records: tax_records, value: value}) do
+    types = tax_records |> Enum.map(& &1.tp) |> Enum.uniq()
+
+    with {:ok, total_cents} <- sum_effective_cents(tax_records, types),
+         {:ok, value_cents} <- cents(value) do
+      if total_cents <= value_cents do
+        :ok
+      else
+        {:error, "tax_records: soma dos tributos excede o valor da transação (#{value})"}
+      end
+    else
+      :error -> {:error, "tax_records: valor decimal inválido em TtlAmt ou value"}
+    end
+  end
+
+  defp sum_effective_cents(tax_records, types) do
+    Enum.reduce_while(types, {:ok, 0}, fn tp, {:ok, acc} ->
+      record =
+        Enum.find(tax_records, &(&1.tp == tp and &1.ctgy == "COR")) ||
+          Enum.find(tax_records, &(&1.tp == tp and &1.ctgy == "INF"))
+
+      case record && cents(record.ttl_amt) do
+        {:ok, value} -> {:cont, {:ok, acc + value}}
+        _ -> {:halt, :error}
+      end
+    end)
+  end
+
+  defp cents(str) when is_binary(str) do
+    case Regex.run(~r/^(-?\d+)(?:\.(\d{1,2}))?$/, str) do
+      [_, int] ->
+        {:ok, String.to_integer(int) * 100}
+
+      [_, int, frac] ->
+        {:ok, String.to_integer(int) * 100 + String.to_integer(String.pad_trailing(frac, 2, "0"))}
+
+      nil ->
+        :error
+    end
+  end
+
+  defp cents(_str), do: :error
 
   defp validate_shared_header([_single]), do: :ok
 
@@ -202,6 +321,22 @@ defmodule Isox.Pain013 do
       "Purp" => %{"Prtry" => m.purp_prtry}
     }
     |> maybe_put("RmtInf", if(m.rmt_inf, do: %{"Ustrd" => m.rmt_inf}))
+    |> maybe_put("Tax", tax_term(m))
+  end
+
+  defp tax_term(%{tax_records: []}), do: nil
+
+  defp tax_term(m) do
+    %{"Rcrd" => Enum.map(m.tax_records, &tax_record_term/1)}
+    |> maybe_put("RefNb", m.tax_ref_nb)
+  end
+
+  defp tax_record_term(%{tp: tp, ctgy: ctgy, ttl_amt: ttl_amt}) do
+    %{
+      "Tp" => tp,
+      "Ctgy" => ctgy,
+      "TaxAmt" => %{"TtlAmt" => %{value: to_string(ttl_amt), attributes: %{"Ccy" => "BRL"}}}
+    }
   end
 
   defp ultmt_dbtr_term(%{ultmt_dbtr_name: nil}), do: nil
@@ -252,8 +387,19 @@ defmodule Isox.Pain013 do
       cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
       cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
       purp_prtry: get_in(tx, ["Purp", "Prtry"]),
-      rmt_inf: get_in(tx, ["RmtInf", "Ustrd"])
+      rmt_inf: get_in(tx, ["RmtInf", "Ustrd"]),
+      tax_ref_nb: get_in(tx, ["Tax", "RefNb"]),
+      tax_records:
+        tx |> get_in(["Tax", "Rcrd"]) |> List.wrap() |> Enum.map(&tax_record_from_term/1)
     }
+  end
+
+  defp tax_record_from_term(%{
+         "Tp" => tp,
+         "Ctgy" => ctgy,
+         "TaxAmt" => %{"TtlAmt" => %{value: value}}
+       }) do
+    %{tp: tp, ctgy: ctgy, ttl_amt: value}
   end
 
   defp format_datetime(%DateTime{} = dt) do

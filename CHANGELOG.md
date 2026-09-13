@@ -43,6 +43,26 @@ Primeira versão pública.
 
 ### Corrigido
 
+- `Pain013`: o bloco `Tax` (divisão de tributos IBS/CBS — Split Payment
+  da reforma tributária) era completamente ignorado — `decode/1`
+  descartava silenciosamente os dados de tributo de qualquer XML real
+  que os trouxesse (sem erro nenhum), e `encode/3` não tinha como
+  montá-los. Confirmado com o exemplo oficial novo do BCB introduzido
+  no catálogo v5.13.1 (`pain.013_SplitPayment.xml`), que só decodificava
+  com perda de dado. Agora `tax_ref_nb`/`tax_records` fazem parte da
+  struct, com as regras da planilha do catálogo validadas em
+  `encode/3`: o bloco só é permitido quando `dbtr_cpf_cnpj` é CNPJ (14
+  caracteres); cada tipo de tributo presente precisa de um `Record`
+  `ctgy: "INF"`; e a soma dos valores efetivos (`COR` tem prioridade
+  sobre `INF` quando ambos existem) não pode exceder `value`. Também
+  nada validava a regra cruzada entre `ReqdExctnDt` e `Purp/Prtry` —
+  obrigatório quando `"AGND"`, proibido quando `"NTAG"`/`"RIFL"` —
+  confirmada nos 4 exemplos oficiais do BCB para esta mensagem, sem
+  exceção (o próprio teste do módulo tinha essa combinação
+  inconsistente sem ninguém notar). Achado no deep dive de validação do
+  catálogo (issue #53, pain.013).
+
+
 - `Pain012`: nada validava a regra cruzada da planilha do catálogo
   entre `accptd`, `rjct_rsn_prtry`, `mndt_sts` e `mndt_prcg_dtls` —
   dava pra montar uma resposta de aceite sem `mndt_sts` (obrigatório

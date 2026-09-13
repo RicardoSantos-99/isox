@@ -26,7 +26,7 @@ defmodule Isox.Pain013Test do
     cdtr_cpf_cnpj: "98765432100",
     cdtr_acct_id: "54321",
     cdtr_acct_type: "CACC",
-    purp_prtry: "AGND"
+    purp_prtry: "NTAG"
   }
 
   test "só com o obrigatório, monta e volta pra struct" do
@@ -47,7 +47,8 @@ defmodule Isox.Pain013Test do
   test "com data de execução, devedor final e remessa opcionais" do
     message = %{
       @message
-      | reqd_exctn_dt: @agora,
+      | purp_prtry: "AGND",
+        reqd_exctn_dt: @agora,
         ultmt_dbtr_name: "Empresa Final Ltda",
         ultmt_dbtr_cpf_cnpj: "12345678000199",
         rmt_inf: "pagamento agendado"
@@ -74,5 +75,75 @@ defmodule Isox.Pain013Test do
     """
 
     assert {:error, _reason} = Pain013.decode(outro_xml)
+  end
+
+  test "purp_prtry AGND sem reqd_exctn_dt é rejeitado" do
+    message = %{@message | purp_prtry: "AGND", reqd_exctn_dt: nil}
+
+    assert {:error, reason} = Pain013.encode(message, @header, :v2_2)
+    assert reason =~ "reqd_exctn_dt"
+  end
+
+  test "purp_prtry NTAG/RIFL com reqd_exctn_dt é rejeitado" do
+    message = %{@message | purp_prtry: "NTAG", reqd_exctn_dt: @agora}
+
+    assert {:error, reason} = Pain013.encode(message, @header, :v2_2)
+    assert reason =~ "reqd_exctn_dt"
+
+    message = %{@message | purp_prtry: "RIFL", reqd_exctn_dt: @agora}
+    assert {:error, _reason} = Pain013.encode(message, @header, :v2_2)
+  end
+
+  test "Split Payment: Tax vai e volta com CNPJ do devedor" do
+    message = %{
+      @message
+      | dbtr_cpf_cnpj: "12345678000199",
+        tax_ref_nb: "NFE12345678901234567890",
+        tax_records: [
+          %{tp: "IBSSPLIT", ctgy: "INF", ttl_amt: "10.00"},
+          %{tp: "IBSSPLIT", ctgy: "COR", ttl_amt: "12.00"},
+          %{tp: "CBSSPLIT", ctgy: "INF", ttl_amt: "5.00"}
+        ]
+    }
+
+    assert {:ok, xml} = Pain013.encode(message, @header, :v2_2)
+    assert {:ok, de_volta, :v2_2} = Pain013.decode(xml)
+
+    assert de_volta.tax_ref_nb == "NFE12345678901234567890"
+    assert de_volta.tax_records == message.tax_records
+  end
+
+  test "Split Payment: bloco Tax exige CNPJ do devedor (rejeita CPF)" do
+    message = %{
+      @message
+      | dbtr_cpf_cnpj: "12345678901",
+        tax_records: [%{tp: "IBSSPLIT", ctgy: "INF", ttl_amt: "10.00"}]
+    }
+
+    assert {:error, reason} = Pain013.encode(message, @header, :v2_2)
+    assert reason =~ "CNPJ"
+  end
+
+  test "Split Payment: cada tipo de tributo precisa de Record com ctgy INF" do
+    message = %{
+      @message
+      | dbtr_cpf_cnpj: "12345678000199",
+        tax_records: [%{tp: "IBSSPLIT", ctgy: "COR", ttl_amt: "10.00"}]
+    }
+
+    assert {:error, reason} = Pain013.encode(message, @header, :v2_2)
+    assert reason =~ "INF"
+  end
+
+  test "Split Payment: soma dos tributos não pode exceder o valor da transação" do
+    message = %{
+      @message
+      | dbtr_cpf_cnpj: "12345678000199",
+        value: "100.00",
+        tax_records: [%{tp: "IBSSPLIT", ctgy: "INF", ttl_amt: "999.00"}]
+    }
+
+    assert {:error, reason} = Pain013.encode(message, @header, :v2_2)
+    assert reason =~ "tax_records"
   end
 end
