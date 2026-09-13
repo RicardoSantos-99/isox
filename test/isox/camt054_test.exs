@@ -80,6 +80,31 @@ defmodule Isox.Camt054Test do
     assert de_volta.rtr_rsn_addtl_inf == "devolução solicitada"
   end
 
+  # AddtlTxInf não é texto livre apesar do nome — o tipo XSD real é o
+  # mesmo enum HIGH/NORM do InstrPrty (planilha: "prioridadePagamento").
+  # Confirmado com os exemplos oficiais do BCB (camt.054_det_lancamento e
+  # _dinheiro_especie vêm com addtl_tx_inf "HIGH").
+  test "addtl_tx_inf só aceita HIGH/NORM (é prioridade, não texto livre)" do
+    message = %{@message | addtl_tx_inf: "HIGH"}
+
+    assert {:ok, xml} = Camt054.encode(message, @header, :v1_16)
+    assert {:ok, de_volta, :v1_16} = Camt054.decode(xml)
+    assert de_volta.addtl_tx_inf == "HIGH"
+
+    invalido = %{@message | addtl_tx_inf: "qualquer texto livre"}
+    assert {:error, _reason} = Camt054.encode(invalido, @header, :v1_16)
+  end
+
+  test "lote: encode aceita lista, decode devolve lista de volta" do
+    outro = %{@message | ntfctn_id: "M123456780123456789abcdefghijklo", acct_ispb: "22222222"}
+
+    assert {:ok, xml} = Camt054.encode([@message, outro], @header, :v1_16)
+    assert {:ok, [de_volta1, de_volta2], :v1_16} = Camt054.decode(xml)
+
+    assert de_volta1.acct_ispb == "11111111"
+    assert de_volta2.acct_ispb == "22222222"
+  end
+
   test "campo obrigatório ausente é rejeitado antes de montar XML" do
     message = %{@message | end_to_end_id: nil}
     assert {:error, reason} = Camt054.encode(message, @header, :v1_16)

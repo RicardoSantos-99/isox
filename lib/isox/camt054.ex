@@ -20,6 +20,14 @@ defmodule Isox.Camt054 do
   dele são cada um independentemente opcional (diferente do `Pacs008`,
   onde os dois agentes são sempre obrigatórios) — confirmado contra o
   schema real, não assumido do padrão anterior.
+
+  `addtl_tx_inf` (`AddtlTxInf`) não é texto livre, apesar do nome —
+  o tipo XSD real (`Priority2Code`) e a planilha ("prioridadePagamento")
+  confirmam que é a prioridade da transação original (`HIGH`/`NORM`),
+  reaproveitando por engano o mesmo tipo ISO do `InstrPrty` de
+  `Pacs008`/`Pain013`. Fica com esse nome porque é a tag XML
+  (`AdditionalTransactionInformation`) do schema — mas só aceita esses
+  dois valores.
   """
 
   alias Isox.AppHdr
