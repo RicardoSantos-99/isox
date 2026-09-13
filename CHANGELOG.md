@@ -43,6 +43,19 @@ Primeira versão pública.
 
 ### Corrigido
 
+- `Camt060`: `RptgPrd` (período do relatório) sempre incluía `FrToTm`
+  (horário) mesmo sem `rptg_prd_fr_tm`/`rptg_prd_to_tm` informados,
+  produzindo um `<FrToTm></FrToTm>` vazio que violava o schema — mas
+  `FrToTm` é independentemente opcional (`minOccurs="0"`, separado de
+  `FrToDt`), usado só em consulta de relação de lançamentos.
+  Consultas de saldo de dia anterior, de remuneração da Conta PI, ou de
+  arquivo `TRD`/`TRT` usam só data, sem horário — 3 dos 7 exemplos
+  oficiais do BCB para esta mensagem são exatamente esse caso, e
+  ficavam impossíveis de montar (`encode/3` errava com "elemento
+  obrigatório ausente: FrTm"). `FrToTm` agora só entra quando os campos
+  de horário são realmente informados (e os dois precisam vir juntos).
+  Achado no deep dive de validação do catálogo (issue #46, camt.060).
+
 - `Camt029`: nada validava a regra cruzada da planilha do catálogo
   entre `pmt_inf_cxl_sts`, `rsn_prtry` e `cxl_prcg_tp` — dava pra montar
   um `RJCR` (rejeição) sem motivo nenhum, ou uma combinação `ACCR`

@@ -46,6 +46,34 @@ defmodule Isox.Camt060Test do
     assert xml =~ "<Tp>ALLL</Tp>"
   end
 
+  # FrToTm é independentemente opcional dentro de RptgPrd (schema real:
+  # minOccurs="0" nele, separado de FrToDt) — usado só pra consulta de
+  # relação de lançamentos. Saldo de dia anterior, remuneração da Conta
+  # PI e arquivos TRD/TRT pedem só data, sem horário nenhum. Confirmado
+  # pelos exemplos oficiais do BCB (camt.060_SALDO_DATA_ANTERIOR,
+  # _SOLIC_REMUNERACAO_CONTA_PI, _SOLIC_ARQUIVO_TRD).
+  test "período só com data, sem horário (saldo de dia anterior)" do
+    message = %{
+      @message
+      | rptg_prd_fr_dt: ~D[2026-09-01],
+        reqd_bal_tp_prtry: "CSA"
+    }
+
+    assert {:ok, xml} = Camt060.encode(message, @header, :v1_9)
+    assert {:ok, de_volta, :v1_9} = Camt060.decode(xml)
+
+    assert de_volta.rptg_prd_fr_dt == ~D[2026-09-01]
+    assert de_volta.rptg_prd_fr_tm == nil
+    refute xml =~ "FrToTm"
+  end
+
+  test "rptg_prd_fr_tm sem rptg_prd_to_tm (ou vice-versa) é rejeitado" do
+    message = %{@message | rptg_prd_fr_dt: ~D[2026-09-01], rptg_prd_fr_tm: ~T[00:00:00.000]}
+
+    assert {:error, reason} = Camt060.encode(message, @header, :v1_9)
+    assert reason =~ "rptg_prd_fr_tm"
+  end
+
   test "campo obrigatório ausente é rejeitado antes de montar XML" do
     message = %{@message | reqd_msg_nm_id: nil}
     assert {:error, reason} = Camt060.encode(message, @header, :v1_9)

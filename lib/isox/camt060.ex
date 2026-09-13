@@ -4,10 +4,20 @@ defmodule Isox.Camt060 do
   PI), versão 1.9 — `ReqdMsgNmId` é o campo despachante: decide se a
   resposta é camt.052, camt.053 ou camt.054.
 
-  `RptgPrd` (período do relatório) é opcional como um todo; quando
-  presente no schema real, exige `FrDt` + `FrTm`/`ToTm` juntos (e `Tp`
-  fixo em `"ALLL"`, que não é campo do modelo). O modelo usa
-  `rptg_prd_fr_dt` como sinal de presença do período inteiro.
+  `RptgPrd` (período do relatório) é opcional como um todo; `Tp` é fixo
+  em `"ALLL"` (não é campo do modelo). O modelo usa `rptg_prd_fr_dt`
+  como sinal de presença do período inteiro (`FrToDt`, com `FrDt`
+  obrigatório e `ToDt` opcional).
+
+  `FrToTm` (`rptg_prd_fr_tm`/`rptg_prd_to_tm`) é **independentemente
+  opcional** dentro de `RptgPrd` — não é sempre exigido junto de
+  `FrToDt`, como uma versão anterior deste moduledoc dizia por engano.
+  A planilha do catálogo é explícita: `FrToTm` só é usado em
+  "relação de lançamentos" (consulta de camt.054); consultas de saldo
+  de dia anterior, de remuneração da Conta PI, ou de arquivo `TRD`/`TRT`
+  usam só `FrToDt`, sem horário — confirmado pelos exemplos oficiais
+  (`camt.060_SALDO_DATA_ANTERIOR`, `_SOLIC_REMUNERACAO_CONTA_PI`,
+  `_SOLIC_ARQUIVO_TRD`, todos com `RptgPrd` sem `FrToTm`).
   """
 
   alias Isox.AppHdr
@@ -49,7 +59,8 @@ defmodule Isox.Camt060 do
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
   @spec encode(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
   def encode(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_9] do
-    with :ok <- validate_required(message) do
+    with :ok <- validate_required(message),
+         :ok <- validate_rptg_prd_tm(message) do
       module = Map.fetch!(@module_by_version, version)
 
       term = %{
@@ -93,6 +104,20 @@ defmodule Isox.Camt060 do
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
+  # FrTm/ToTm são obrigatórios juntos dentro de FrToTm no schema real
+  # (nenhum dos dois tem minOccurs="0") — mas FrToTm inteiro é opcional
+  # dentro de RptgPrd. rptg_prd_fr_tm e rptg_prd_to_tm têm que vir os
+  # dois ou nenhum dos dois.
+  defp validate_rptg_prd_tm(%{rptg_prd_fr_tm: nil, rptg_prd_to_tm: nil}), do: :ok
+
+  defp validate_rptg_prd_tm(%{rptg_prd_fr_tm: fr_tm, rptg_prd_to_tm: to_tm})
+       when not is_nil(fr_tm) and not is_nil(to_tm),
+       do: :ok
+
+  defp validate_rptg_prd_tm(_message) do
+    {:error, "rptg_prd_fr_tm e rptg_prd_to_tm precisam vir juntos, ou nenhum dos dois"}
+  end
+
   defp document_term(m) do
     %{
       "AcctRptgReq" => %{
@@ -122,12 +147,15 @@ defmodule Isox.Camt060 do
         "FrDt" => Date.to_iso8601(m.rptg_prd_fr_dt),
         "ToDt" => date_or_nil(m.rptg_prd_to_dt)
       },
-      "FrToTm" => %{
-        "FrTm" => format_time(m.rptg_prd_fr_tm),
-        "ToTm" => format_time(m.rptg_prd_to_tm)
-      },
       "Tp" => "ALLL"
     }
+    |> maybe_put("FrToTm", fr_to_tm_term(m))
+  end
+
+  defp fr_to_tm_term(%{rptg_prd_fr_tm: nil}), do: nil
+
+  defp fr_to_tm_term(m) do
+    %{"FrTm" => format_time(m.rptg_prd_fr_tm), "ToTm" => format_time(m.rptg_prd_to_tm)}
   end
 
   defp date_or_nil(nil), do: nil
