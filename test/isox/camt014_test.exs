@@ -34,6 +34,11 @@ defmodule Isox.Camt014Test do
     assert reason =~ "mmb_nm"
   end
 
+  test "tipo de participante fora do enum é rejeitado" do
+    message = %{@message | mmb_tp_cd: "XXXX"}
+    assert {:error, _reason} = Camt014.encode(message, @header, :v1_6)
+  end
+
   test "parse rejeita XML de outra mensagem" do
     outro_xml = """
     <?xml version="1.0" encoding="UTF-8"?>
