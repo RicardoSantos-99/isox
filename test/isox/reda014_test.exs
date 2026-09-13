@@ -34,4 +34,27 @@ defmodule Isox.Reda014Test do
 
     assert {:error, _reason} = Reda014.decode(outro_xml)
   end
+
+  test "campo obrigatório ausente é rejeitado antes de montar XML" do
+    message = %Reda014{
+      msg_id: "M123456780123456789abcdefghijklm",
+      created_at: DateTime.utc_now() |> DateTime.truncate(:millisecond),
+      ispb: nil,
+      cnpj: "12345678000199"
+    }
+
+    assert {:error, reason} = Reda014.encode(message, @header, :v1_3)
+    assert reason =~ "ispb"
+  end
+
+  test "cnpj com formato de CPF (11 dígitos) é rejeitado" do
+    message = %Reda014{
+      msg_id: "M123456780123456789abcdefghijklm",
+      created_at: DateTime.utc_now() |> DateTime.truncate(:millisecond),
+      ispb: "11111111",
+      cnpj: "12345678901"
+    }
+
+    assert {:error, _reason} = Reda014.encode(message, @header, :v1_3)
+  end
 end
