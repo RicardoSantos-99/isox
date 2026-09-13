@@ -57,6 +57,24 @@ defmodule Isox.Camt053Test do
     assert de_volta.stmt_id == String.duplicate("0", 32)
   end
 
+  test "lote: encode aceita lista, decode devolve lista de volta" do
+    message = %Camt053{
+      msg_id: "M123456780123456789abcdefghijklm",
+      created_at: @agora,
+      stmt_id: "M123456780123456789abcdefghijkln",
+      acct_ispb: "11111111",
+      balances: [%{tp_prtry: "SADP", value: "100.00", dt_tm: @agora}]
+    }
+
+    outro = %{message | stmt_id: "M123456780123456789abcdefghijklo", acct_ispb: "22222222"}
+
+    assert {:ok, xml} = Camt053.encode([message, outro], @header, :v1_4)
+    assert {:ok, [de_volta1, de_volta2], :v1_4} = Camt053.decode(xml)
+
+    assert de_volta1.acct_ispb == "11111111"
+    assert de_volta2.acct_ispb == "22222222"
+  end
+
   test "parse rejeita XML de outra mensagem" do
     outro_xml = """
     <?xml version="1.0" encoding="UTF-8"?>
