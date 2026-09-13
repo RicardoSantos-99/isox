@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Xmldsig.Spike do
   servidor HTTP no caminho:
 
     1. montar e assinar uma pacs.008 pelo caminho de template canônico
-       (sem canonicalização no caminho quente — ver `PixSpiCatalog.Xmldsig.Signer`)
+       (sem canonicalização no caminho quente — ver `Isox.Xmldsig.Signer`)
     2. parsear e verificar a assinatura de uma pacs.008 de entrada, com
        canonicalização real (não dá pra confiar que os bytes de terceiro
        já chegam canônicos)
@@ -22,8 +22,8 @@ defmodule Mix.Tasks.Xmldsig.Spike do
 
   use Mix.Task
 
-  alias PixSpiCatalog.Xmldsig.{Canonicalizer, Signer, Verifier}
-  alias PixSpiCatalog.Xmldsig.TestCA
+  alias Isox.Xmldsig.{Canonicalizer, Signer, Verifier}
+  alias Isox.Xmldsig.TestCA
 
   @impl Mix.Task
   def run(_args) do
@@ -91,7 +91,7 @@ defmodule Mix.Tasks.Xmldsig.Spike do
       ~s(</AppHdr>)
   end
 
-  # Escrito à mão em vez de vir de PixSpiCatalog.Pacs008.build/3 só pra
+  # Escrito à mão em vez de vir de Isox.Pacs008.encode/3 só pra
   # manter este spike simples e autocontido; tamanho e profundidade
   # realistas de uma pacs.008 de verdade é o que importa pra medir custo
   # de canonicalização/assinatura, não o conteúdo exato dos campos.

@@ -3,7 +3,7 @@ defmodule Mix.Tasks.Catalog.Gen do
 
   @moduledoc """
   Lê todos os `.xsd` de mensagem em `--xsd-dir` (exceto `xmldsig`, que não é
-  mensagem) e gera, em `--out`, um módulo `PixSpiCatalog.Generated.<Mensagem>.<Versao>`
+  mensagem) e gera, em `--out`, um módulo `Isox.Generated.<Mensagem>.<Versao>`
   por arquivo, mais um módulo interno com o BAH (`head.001`), compartilhado
   entre todas as mensagens (ADR 0004).
 
@@ -11,13 +11,13 @@ defmodule Mix.Tasks.Catalog.Gen do
   arquivo versionado neste repositório (ADR 0009).
 
       mix catalog.gen --xsd-dir /caminho/para/catalogo_spi/v5.13.1/xsd \\
-                      --out lib/pix_spi_catalog/generated
+                      --out lib/isox/generated
   """
 
   use Mix.Task
 
-  alias PixSpiCatalog.Generator
-  alias PixSpiCatalog.Xsd.{Compiler, Reader}
+  alias Isox.Generator
+  alias Isox.Xsd.{Compiler, Reader}
 
   @impl Mix.Task
   def run(args) do

@@ -6,9 +6,11 @@ não depende de nenhum outro projeto para compilar, testar ou publicar.
 
 ## Fronteira desta lib
 
-- Conhece o catálogo: mensagens, versões, `build/3`/`parse/1`.
+- Conhece o catálogo: mensagens, versões, `Isox.encode/2`/`Isox.decode/1`
+  (por `Isox.Envelope`) e, por mensagem, `encode/3`/`decode/1` de baixo
+  nível.
 - Conhece o perfil de assinatura XMLDSig do Manual de Segurança do SFN
-  (`PixSpiCatalog.Xmldsig`), como módulo à parte que não conhece estrutura
+  (`Isox.Xmldsig`), como módulo à parte que não conhece estrutura
   de mensagem alguma — `<Sgntr>` é sempre opaco para o resto do codec.
 - **Não** conhece transporte, streams, cenários, correlação de
   transação, nem qualquer regra de negócio de quem consome a lib.
@@ -20,7 +22,7 @@ não depende de nenhum outro projeto para compilar, testar ou publicar.
 
 - `mix format` sempre; `mix credo --strict` sem pendência.
 - Comentário só quando o código sozinho não explica o porquê.
-- Todo módulo novo tem teste. O motor genérico (XSD → schema, parse/build)
+- Todo módulo novo tem teste. O motor genérico (XSD → schema, encode/decode)
   é testado com schemas sintéticos pequenos, sem depender dos XSDs reais.
   Os schemas gerados de verdade são testados à parte, por round-trip contra
   os exemplos oficiais do catálogo.
@@ -28,7 +30,7 @@ não depende de nenhum outro projeto para compilar, testar ou publicar.
 - Nenhuma menção a IA, assistente ou ferramenta de geração em código,
   comentário ou commit.
 - Toda função pública tem `@doc` e `@spec` (módulos gerados em
-  `lib/pix_spi_catalog/generated/` são a exceção deliberada: `@moduledoc
+  `lib/isox/generated/` são a exceção deliberada: `@moduledoc
   false`, não fazem parte da API pública). `mix docs` deve gerar sem
   aviso de função pública sem documentação.
 - Mudança visível de comportamento entra no `CHANGELOG.md`.
