@@ -11,7 +11,7 @@ defmodule Isox.Reda041 do
   mais campos alterados), então é modelada como lista de verdade, não
   simplificada pra 1 item. `encode/3` não precisa validar o limite
   explicitamente — `confirm/2` (round-trip) já rejeita 0 ou mais de 3
-  itens via o motor (`Isox.Xml.Codec`).
+  itens via o motor (Isox.Xml.Codec, módulo interno).
   """
 
   alias Isox.AppHdr
