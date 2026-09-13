@@ -43,6 +43,31 @@ Primeira versão pública.
 
 ### Corrigido
 
+- `Trck002`: nada validava 3 regras da planilha do catálogo (BCB) que o
+  XSD sozinho não expressa (o mesmo enum de 5 opções é reusado pra
+  conta devedora e credora, e `Prxy`/`InstrId` são apenas opcionais na
+  estrutura, sem condição nenhuma):
+  - `cdtr_acct_proxy` (chave Pix) — obrigatório quando `lcl_instrm` é
+    `"DICT"`/`"QRDN"`/`"QRES"`/`"APDN"`/`"APES"`/`"INIC"`, proibido
+    quando é `"MANU"`/`"AUTO"`. Dava pra montar uma transação `QRDN`
+    sem chave nenhuma, ou uma `MANU` carregando uma chave Pix que não
+    devia existir, sem erro algum. O próprio teste do módulo tinha essa
+    segunda combinação inconsistente (`InstrId` + `cdtr_acct_proxy`
+    junto com `lcl_instrm = "MANU"`) sem ninguém notar — impossível na
+    prática, já que devolução (que exige `MANU`) e chave Pix
+    (proibida em `MANU`) se excluem mutuamente.
+  - `cdtr_acct_type` nunca pode ser `"SLRY"` (Conta-Salário não recebe
+    pagamentos) — o XSD permite porque reusa o mesmo enum de tipo de
+    conta pros dois lados.
+  - `instr_id` presente (transação de devolução, análoga a uma
+    `Pacs004`) exige `lcl_instrm == "MANU"`.
+
+  `encode/3` agora valida as 3, confirmado pelo único exemplo oficial
+  do BCB (idêntico em ambas as versões do catálogo). Achado no deep
+  dive de validação do catálogo (issue #63, trck.002) — última das 27
+  mensagens do catálogo revisadas.
+
+
 - `Reda041`: a moduledoc dizia que `Rcrd.Othr` era `max: ilimitado`,
   mas o schema real da BCB limita a `[1..3]` (`maxOccurs="3"`, sem
   `minOccurs` declarado — `1` implícito), consistente com só existirem

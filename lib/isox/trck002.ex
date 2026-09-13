@@ -10,6 +10,17 @@ defmodule Isox.Trck002 do
   `Pacs002`/`Pacs004`/`Pacs008`. `TxSts.Sts` (enum de valor único
   `"ACCC"`) fica fixo — book transfer é sempre reportado como já
   efetivado.
+
+  3 regras da planilha do catálogo (BCB) que o XSD sozinho não
+  expressa, validadas em `encode/3`:
+  - `cdtr_acct_proxy` (chave Pix) é obrigatório quando `lcl_instrm` é
+    `"DICT"`/`"QRDN"`/`"QRES"`/`"APDN"`/`"APES"`/`"INIC"`, e proibido
+    quando é `"MANU"`/`"AUTO"`.
+  - `cdtr_acct_type` nunca pode ser `"SLRY"` (Conta-Salário não recebe
+    pagamentos) — mesmo o XSD reusando o mesmo enum de 5 opções pros
+    dois lados (devedor/credor).
+  - `instr_id` presente (transação de devolução, análoga a uma
+    `Pacs004`) exige `lcl_instrm == "MANU"`.
   """
 
   alias Isox.AppHdr
@@ -79,6 +90,7 @@ defmodule Isox.Trck002 do
   def encode([%__MODULE__{} | _] = messages, %AppHdr{} = header, version)
       when version in [:v1_1] do
     with :ok <- validate_all_required(messages),
+         :ok <- validate_all_business_rules(messages),
          :ok <- validate_shared_header(messages) do
       module = Map.fetch!(@module_by_version, version)
       [first | _] = messages
@@ -137,6 +149,51 @@ defmodule Isox.Trck002 do
       do: :ok,
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
+
+  @lcl_instrm_sem_proxy ["MANU", "AUTO"]
+  @lcl_instrm_com_proxy ["DICT", "QRDN", "QRES", "APDN", "APES", "INIC"]
+
+  defp validate_all_business_rules(messages) do
+    Enum.reduce_while(messages, :ok, fn message, :ok ->
+      case validate_business_rules(message) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_business_rules(message) do
+    with :ok <- validate_lcl_instrm_proxy(message),
+         :ok <- validate_cdtr_acct_type(message) do
+      validate_devolucao_lcl_instrm(message)
+    end
+  end
+
+  defp validate_lcl_instrm_proxy(%{lcl_instrm: lcl_instrm, cdtr_acct_proxy: proxy})
+       when lcl_instrm in @lcl_instrm_sem_proxy and not is_nil(proxy) do
+    {:error, "cdtr_acct_proxy não deve ser preenchido quando lcl_instrm = #{inspect(lcl_instrm)}"}
+  end
+
+  defp validate_lcl_instrm_proxy(%{lcl_instrm: lcl_instrm, cdtr_acct_proxy: nil})
+       when lcl_instrm in @lcl_instrm_com_proxy do
+    {:error, "cdtr_acct_proxy é obrigatório quando lcl_instrm = #{inspect(lcl_instrm)}"}
+  end
+
+  defp validate_lcl_instrm_proxy(_message), do: :ok
+
+  defp validate_cdtr_acct_type(%{cdtr_acct_type: "SLRY"}) do
+    {:error, "cdtr_acct_type não pode ser \"SLRY\" (Conta-Salário não recebe pagamentos)"}
+  end
+
+  defp validate_cdtr_acct_type(_message), do: :ok
+
+  defp validate_devolucao_lcl_instrm(%{instr_id: instr_id, lcl_instrm: lcl_instrm})
+       when not is_nil(instr_id) and lcl_instrm != "MANU" do
+    {:error,
+     "lcl_instrm deve ser \"MANU\" quando instr_id está presente (transação de devolução)"}
+  end
+
+  defp validate_devolucao_lcl_instrm(_message), do: :ok
 
   defp validate_shared_header([_single]), do: :ok
 

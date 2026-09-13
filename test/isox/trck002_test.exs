@@ -40,17 +40,54 @@ defmodule Isox.Trck002Test do
     assert xml =~ "<Sts>ACCC</Sts>"
   end
 
-  test "com InstrId e chave do recebedor, opcionais" do
-    message = %{
-      @message
-      | instr_id: "D12345678202609121030abcdefghijk",
-        cdtr_acct_proxy: "fulano@example.com"
-    }
+  test "com InstrId (devolução), mantém lcl_instrm MANU e sem chave" do
+    message = %{@message | instr_id: "D12345678202609121030abcdefghijk"}
 
     assert {:ok, xml} = Trck002.encode(message, @header, :v1_1)
     assert {:ok, de_volta, :v1_1} = Trck002.decode(xml)
     assert de_volta.instr_id == message.instr_id
+  end
+
+  test "com chave do recebedor (lcl_instrm que exige Prxy), opcional" do
+    message = %{@message | lcl_instrm: "DICT", cdtr_acct_proxy: "fulano@example.com"}
+
+    assert {:ok, xml} = Trck002.encode(message, @header, :v1_1)
+    assert {:ok, de_volta, :v1_1} = Trck002.decode(xml)
     assert de_volta.cdtr_acct_proxy == "fulano@example.com"
+  end
+
+  test "cdtr_acct_proxy preenchido com lcl_instrm MANU/AUTO é rejeitado" do
+    message = %{@message | lcl_instrm: "MANU", cdtr_acct_proxy: "fulano@example.com"}
+    assert {:error, reason} = Trck002.encode(message, @header, :v1_1)
+    assert reason =~ "cdtr_acct_proxy"
+
+    message = %{@message | lcl_instrm: "AUTO", cdtr_acct_proxy: "fulano@example.com"}
+    assert {:error, _reason} = Trck002.encode(message, @header, :v1_1)
+  end
+
+  test "cdtr_acct_proxy ausente com lcl_instrm que exige chave é rejeitado" do
+    for lcl_instrm <- ["DICT", "QRDN", "QRES", "APDN", "APES", "INIC"] do
+      message = %{@message | lcl_instrm: lcl_instrm, cdtr_acct_proxy: nil}
+      assert {:error, reason} = Trck002.encode(message, @header, :v1_1)
+      assert reason =~ "cdtr_acct_proxy"
+    end
+  end
+
+  test "cdtr_acct_type SLRY é rejeitado (Conta-Salário não recebe pagamentos)" do
+    message = %{@message | cdtr_acct_type: "SLRY"}
+    assert {:error, reason} = Trck002.encode(message, @header, :v1_1)
+    assert reason =~ "SLRY"
+  end
+
+  test "instr_id presente com lcl_instrm diferente de MANU é rejeitado" do
+    message = %{
+      @message
+      | instr_id: "D12345678202609121030abcdefghijk",
+        lcl_instrm: "AUTO"
+    }
+
+    assert {:error, reason} = Trck002.encode(message, @header, :v1_1)
+    assert reason =~ "MANU"
   end
 
   test "campo obrigatório ausente é rejeitado antes de montar XML" do
