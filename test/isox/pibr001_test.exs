@@ -30,4 +30,25 @@ defmodule Isox.Pibr001Test do
 
     assert {:error, _reason} = Pibr001.decode(outro_xml)
   end
+
+  test "campo obrigatório ausente é rejeitado antes de montar XML" do
+    message = %Pibr001{
+      msg_id: "M123456780123456789abcdefghijklm",
+      created_at: DateTime.utc_now() |> DateTime.truncate(:millisecond),
+      data: nil
+    }
+
+    assert {:error, reason} = Pibr001.encode(message, @header, :v1_3)
+    assert reason =~ "data"
+  end
+
+  test "data além do máximo de 35 caracteres é rejeitado" do
+    message = %Pibr001{
+      msg_id: "M123456780123456789abcdefghijklm",
+      created_at: DateTime.utc_now() |> DateTime.truncate(:millisecond),
+      data: String.duplicate("a", 36)
+    }
+
+    assert {:error, _reason} = Pibr001.encode(message, @header, :v1_3)
+  end
 end
