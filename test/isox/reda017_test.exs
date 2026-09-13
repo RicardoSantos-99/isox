@@ -35,4 +35,16 @@ defmodule Isox.Reda017Test do
 
     assert {:error, _reason} = Reda017.decode(outro_xml)
   end
+
+  test "campo obrigatório ausente é rejeitado antes de montar XML" do
+    message = %Reda017{
+      msg_id: "M123456780123456789abcdefghijklm",
+      created_at: @agora,
+      ispb: nil,
+      confirmation_deadline: @agora
+    }
+
+    assert {:error, reason} = Reda017.encode(message, @header, :v1_2)
+    assert reason =~ "ispb"
+  end
 end
