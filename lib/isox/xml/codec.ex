@@ -154,14 +154,20 @@ defmodule Isox.Xml.Codec do
     end
   end
 
-  defp extract_item(%Element{tag: tag, type: type, min: min}, grouped) do
+  defp extract_item(%Element{tag: tag, type: type, min: min, max: max}, grouped) do
     children = Map.get(grouped, tag, [])
+    count = length(children)
 
-    if length(children) < min do
-      raise "elemento #{tag}: esperado ao menos #{min}, vieram #{length(children)}"
+    cond do
+      count < min ->
+        raise "elemento #{tag}: esperado ao menos #{min}, vieram #{count}"
+
+      max != :unbounded and count > max ->
+        raise "elemento #{tag}: esperado no máximo #{max}, vieram #{count}"
+
+      true ->
+        %{tag => Enum.map(children, &extract_type(&1, type))}
     end
-
-    %{tag => Enum.map(children, &extract_type(&1, type))}
   end
 
   defp extract_item(%Choice{options: options, min: min}, grouped) do
@@ -260,6 +266,7 @@ defmodule Isox.Xml.Codec do
 
     validate_decimal!(value, type)
     validate_date!(value, type)
+    validate_boolean!(value, type)
 
     value
   end
@@ -348,6 +355,22 @@ defmodule Isox.Xml.Codec do
   end
 
   defp validate_date!(_value, _type), do: :ok
+
+  # xs:boolean (ex.: TrckgInd/DtAdjstmntRuleInd do pacs.009/011/012)
+  # também nunca vem com pattern no XSD do catálogo —
+  # <xs:restriction base="xs:boolean"/> vazio, mesma situação do
+  # xs:date acima: confia na validação léxica embutida do tipo, que
+  # este motor não implementa de nenhum outro jeito. Sem este check,
+  # qualquer string passava reto pelo parse/build como se fosse um
+  # boolean válido. "true"/"false"/"1"/"0" são as 4 representações
+  # léxicas válidas de xs:boolean pela especificação XML Schema.
+  defp validate_boolean!(value, %SimpleType{base: "boolean"}) do
+    if value not in ["true", "false", "1", "0"] do
+      raise "valor #{inspect(value)} não é um boolean válido (true/false/1/0)"
+    end
+  end
+
+  defp validate_boolean!(_value, _type), do: :ok
 
   # named_captures, não Regex.run posicional: quando o grupo fracionário
   # opcional não participa do match (valor sem ponto decimal, ex. "0"), o

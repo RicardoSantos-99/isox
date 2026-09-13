@@ -61,6 +61,30 @@ defmodule Isox.Xml.CodecTest do
     assert {:ok, %{"Item" => ["a", "b", "c"]}} = Codec.parse(schema, xml)
   end
 
+  # maxOccurs numérico > 1 (ex.: MndtPrcgDtls do pain.009, minOccurs="3"
+  # maxOccurs="3") — extract_item só checava o mínimo, nunca o máximo, tanto
+  # pra max: 1 (checado numa cláusula à parte) quanto pra qualquer valor
+  # finito > 1: um valor acima do permitido passava reto pelo parse.
+  test "elemento repetido com maxOccurs numérico (não ilimitado) rejeita excesso" do
+    schema = %Element{
+      tag: "E",
+      type: %ComplexType{
+        content: [%Element{tag: "Item", type: %SimpleType{}, min: 1, max: 3}]
+      }
+    }
+
+    assert {:ok, %{"Item" => ["a", "b", "c"]}} =
+             Codec.parse(schema, "<E><Item>a</Item><Item>b</Item><Item>c</Item></E>")
+
+    assert {:error, message} =
+             Codec.parse(
+               schema,
+               "<E><Item>a</Item><Item>b</Item><Item>c</Item><Item>d</Item></E>"
+             )
+
+    assert message =~ "no máximo 3"
+  end
+
   test "choice: usa a opção presente, ignora as demais" do
     schema = %Element{
       tag: "E",
@@ -309,6 +333,31 @@ defmodule Isox.Xml.CodecTest do
 
     assert {:error, message} = Codec.parse(schema, "<E><Dt>data-invalida</Dt></E>")
     assert message =~ "data válida"
+  end
+
+  # xs:boolean do catálogo nunca vem com pattern (ex.: TrckgInd do
+  # pain.009/011/012, <xs:restriction base="xs:boolean"/> vazio) — mesma
+  # situação do xs:date acima: sem este check, qualquer string passava reto
+  # como se fosse um boolean válido, inclusive no build (XML inválido
+  # montado sem erro nenhum). true/false/1/0 são as 4 representações
+  # léxicas válidas de xs:boolean pela especificação XML Schema.
+  test "validação: xs:boolean sem pattern só aceita true/false/1/0" do
+    schema = %Element{
+      tag: "E",
+      type: %ComplexType{content: [%Element{tag: "Ind", type: %SimpleType{base: "boolean"}}]}
+    }
+
+    assert {:ok, %{"Ind" => "true"}} = Codec.parse(schema, "<E><Ind>true</Ind></E>")
+    assert {:ok, %{"Ind" => "0"}} = Codec.parse(schema, "<E><Ind>0</Ind></E>")
+
+    assert {:error, message} = Codec.parse(schema, "<E><Ind>talvez</Ind></E>")
+    assert message =~ "boolean válido"
+
+    # build (diferente de parse) confia no termo que recebe — não valida;
+    # é o round-trip de confirm/2, que reparseia o XML montado, que barra
+    # um valor inválido antes de sair do domain wrapper.
+    assert {:ok, xml} = Codec.build(schema, %{"Ind" => "talvez"})
+    assert {:error, _reason} = Codec.parse(schema, xml)
   end
 
   test "escapa e desescapa caracteres especiais em texto e atributo" do

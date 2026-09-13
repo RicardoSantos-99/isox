@@ -43,6 +43,24 @@ Primeira versão pública.
 
 ### Corrigido
 
+- `xs:boolean` (`TrckgInd`/`DtAdjstmntRuleInd`, usados em `Pain009`,
+  `Pain011`, `Pain012`) não tinha validação nenhuma — mesma causa raiz
+  do `xs:date` (issue #47): o XSD desses campos não declara `pattern`
+  nenhum, confiando na validação léxica embutida do tipo, que o motor
+  não implementava. Qualquer string passava como boolean válido, tanto
+  no parse quanto no build (XML inválido saía sem erro nenhum).
+  `Isox.Xml.Codec` agora valida contra as 4 representações léxicas
+  válidas de `xs:boolean` (`true`/`false`/`1`/`0`). Achado no deep dive
+  de validação do catálogo (issue #50, pain.009).
+- Elemento repetido com `maxOccurs` numérico maior que 1 (ex.:
+  `MndtPrcgDtls` do `Pain009`, `minOccurs="3" maxOccurs="3"`) só tinha o
+  mínimo validado — o máximo nunca era checado, então mais itens do que
+  o schema permite passava reto pelo parse (e pelo round-trip de
+  `confirm/2`, que usa o mesmo parse). `Isox.Xml.Codec` agora rejeita
+  contagem acima do máximo declarado. Achado no mesmo deep dive (issue
+  #50, pain.009) — também afeta `Pain011` (`MndtPrcgDtls`,
+  `maxOccurs="2"`).
+
 - `Camt060`: `RptgPrd` (período do relatório) sempre incluía `FrToTm`
   (horário) mesmo sem `rptg_prd_fr_tm`/`rptg_prd_to_tm` informados,
   produzindo um `<FrToTm></FrToTm>` vazio que violava o schema — mas

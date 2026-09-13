@@ -68,6 +68,25 @@ defmodule Isox.Pain009Test do
     assert de_volta.fnl_colltn_dt == ~D[2027-09-12]
   end
 
+  test "trckg_ind fora do léxico xs:boolean (true/false/1/0) é rejeitado" do
+    message = %{@message | trckg_ind: "sim"}
+    assert {:error, reason} = Pain009.encode(message, @header, :v1_1)
+    assert reason =~ "boolean válido"
+  end
+
+  # MndtPrcgDtls é minOccurs="3" maxOccurs="3" no schema real — exatamente
+  # 3, não "pelo menos 1". Mais de 3 tinha que ser rejeitado e não era
+  # (motor só checava o mínimo).
+  test "mais de 3 MndtPrcgDtls é rejeitado (schema real exige exatamente 3)" do
+    message = %{
+      @message
+      | mndt_prcg_dtls: @message.mndt_prcg_dtls ++ [%{tp: "CRAT", dt_tm: @agora}]
+    }
+
+    assert {:error, reason} = Pain009.encode(message, @header, :v1_1)
+    assert reason =~ "MndtPrcgDtls"
+  end
+
   test "sem MndtPrcgDtls é rejeitado (exige ao menos 1 no schema real)" do
     message = %{@message | mndt_prcg_dtls: []}
     assert {:error, reason} = Pain009.encode(message, @header, :v1_1)
