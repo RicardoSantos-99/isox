@@ -4,8 +4,10 @@ defmodule Isox.Pacs004 do
   de devolução de uma pacs.008 já liquidada, referenciando a original por
   `OrgnlEndToEndId`.
 
-  Modela `TxInf` como exatamente 1 por mensagem (mesma simplificação do
-  `Pacs008`/`Pacs002` para os elementos de transação em lista).
+  `TxInf` é `max: ilimitado` no XSD e o catálogo oficial documenta lote de
+  verdade (`pacs.004_SPI_10_msg.xml`, 10 transações numa mensagem só).
+  `encode/3` aceita 1 mensagem ou uma lista (lote); `decode/1` devolve 1
+  struct ou uma lista, dependendo de quantas `TxInf` o XML trouxer.
 
   Mesma validação em duas camadas dos outros: `encode/3` confere
   obrigatoriedade do modelo e reaproveita o `decode` do próprio módulo
@@ -60,15 +62,30 @@ defmodule Isox.Pacs004 do
   @module_by_version %{v1_5: V1_5}
   @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
-  @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec encode(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
-  def encode(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_5] do
-    with :ok <- validate_required(message) do
+  @doc """
+  Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
+  dada. Aceita 1 mensagem ou uma lista (lote — vira várias `TxInf` na
+  mesma `Document`, com `NbOfTxs` ajustado à quantidade).
+
+  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML) — em
+  lote, têm que ser iguais em todos os itens da lista.
+  """
+  @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
+          {:ok, binary()} | {:error, String.t()}
+  def encode(%__MODULE__{} = message, %AppHdr{} = header, version) do
+    encode([message], header, version)
+  end
+
+  def encode([%__MODULE__{} | _] = messages, %AppHdr{} = header, version)
+      when version in [:v1_5] do
+    with :ok <- validate_all_required(messages),
+         :ok <- validate_shared_header(messages) do
       module = Map.fetch!(@module_by_version, version)
+      [first | _] = messages
 
       term = %{
         "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
-        "Document" => document_term(message)
+        "Document" => document_term(first, messages)
       }
 
       with {:ok, xml} <- module.encode(term) do
@@ -77,13 +94,16 @@ defmodule Isox.Pacs004 do
     end
   end
 
-  @doc "Decodifica um XML de pacs.004 de volta para a struct."
-  @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
+  @doc """
+  Decodifica um XML de pacs.004 de volta para a struct — ou, quando a
+  mensagem traz mais de uma `TxInf` (lote), para uma lista de structs.
+  """
+  @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
     with {:ok, module, term} <- Isox.Registry.decode(xml),
          {:ok, version} <- version_for(module),
-         {:ok, message} <- struct_from_term(term) do
-      {:ok, message, version}
+         {:ok, message_or_messages} <- struct_from_term(term) do
+      {:ok, message_or_messages, version}
     end
   end
 
@@ -101,6 +121,15 @@ defmodule Isox.Pacs004 do
     end
   end
 
+  defp validate_all_required(messages) do
+    Enum.reduce_while(messages, :ok, fn message, :ok ->
+      case validate_required(message) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
   defp validate_required(message) do
     missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
@@ -109,16 +138,26 @@ defmodule Isox.Pacs004 do
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp document_term(m) do
+  defp validate_shared_header([_single]), do: :ok
+
+  defp validate_shared_header([%{msg_id: msg_id, created_at: created_at} | rest]) do
+    if Enum.all?(rest, &(&1.msg_id == msg_id and &1.created_at == created_at)) do
+      :ok
+    else
+      {:error, "msg_id/created_at precisam ser iguais em todas as mensagens do lote"}
+    end
+  end
+
+  defp document_term(first, messages) do
     %{
       "PmtRtr" => %{
         "GrpHdr" => %{
-          "MsgId" => m.msg_id,
-          "CreDtTm" => format_datetime(m.created_at),
-          "NbOfTxs" => "1",
+          "MsgId" => first.msg_id,
+          "CreDtTm" => format_datetime(first.created_at),
+          "NbOfTxs" => messages |> length() |> to_string(),
           "SttlmInf" => %{"SttlmMtd" => "CLRG"}
         },
-        "TxInf" => [transaction_term(m)]
+        "TxInf" => Enum.map(messages, &transaction_term/1)
       }
     }
   end
@@ -148,38 +187,33 @@ defmodule Isox.Pacs004 do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
-  # TxInf é `max: ilimitado` no schema; o modelo assume 1. `[tx] = ...` sem
-  # essa checagem crashava (MatchError) em vez de devolver erro — o XSD
-  # permite lote (confirmado: pacs.004_SPI_10_msg.xml, exemplo real do
-  # BCB, vem com 10 transações), então decode/1 não pode quebrar por causa
-  # de uma forma de mensagem que o próprio catálogo permite.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "PmtRtr"])
     grp = doc["GrpHdr"]
 
     case doc["TxInf"] do
-      [tx] ->
-        rsn_inf = tx["RtrRsnInf"]
-        orgnl_ref = tx["OrgnlTxRef"]
-
-        {:ok,
-         %__MODULE__{
-           msg_id: grp["MsgId"],
-           created_at: parse_datetime(grp["CreDtTm"]),
-           rtr_id: tx["RtrId"],
-           orgnl_end_to_end_id: tx["OrgnlEndToEndId"],
-           value: get_in(tx, ["RtrdIntrBkSttlmAmt", :value]),
-           sttlm_prty: tx["SttlmPrty"],
-           rtr_rsn_cd: get_in(rsn_inf, ["Rsn", "Cd"]),
-           rtr_rsn_addtl_inf: rsn_inf["AddtlInf"],
-           dbtr_agt_ispb: get_in(orgnl_ref, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-           cdtr_agt_ispb: get_in(orgnl_ref, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-           rmt_inf_ustrd: get_in(orgnl_ref, ["RmtInf", "Ustrd"])
-         }}
-
-      txs ->
-        {:error, {:unsupported_batch, length(txs)}}
+      [tx] -> {:ok, tx_from_term(grp, tx)}
+      txs -> {:ok, Enum.map(txs, &tx_from_term(grp, &1))}
     end
+  end
+
+  defp tx_from_term(grp, tx) do
+    rsn_inf = tx["RtrRsnInf"]
+    orgnl_ref = tx["OrgnlTxRef"]
+
+    %__MODULE__{
+      msg_id: grp["MsgId"],
+      created_at: parse_datetime(grp["CreDtTm"]),
+      rtr_id: tx["RtrId"],
+      orgnl_end_to_end_id: tx["OrgnlEndToEndId"],
+      value: get_in(tx, ["RtrdIntrBkSttlmAmt", :value]),
+      sttlm_prty: tx["SttlmPrty"],
+      rtr_rsn_cd: get_in(rsn_inf, ["Rsn", "Cd"]),
+      rtr_rsn_addtl_inf: rsn_inf["AddtlInf"],
+      dbtr_agt_ispb: get_in(orgnl_ref, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+      cdtr_agt_ispb: get_in(orgnl_ref, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+      rmt_inf_ustrd: get_in(orgnl_ref, ["RmtInf", "Ustrd"])
+    }
   end
 
   defp format_datetime(%DateTime{} = dt) do

@@ -4,8 +4,11 @@ defmodule Isox.Pain013 do
   pagamento vinculada a um mandato ativo), versão 2.2 — na data agendada,
   essa instrução vira o gatilho de uma pacs.008 real.
 
-  Modela `PmtInf`/`CdtTrfTx` como exatamente 1 por mensagem. `InitgPty`
-  no `GrpHdr` é sempre `[0]{14}` (14 zeros) no schema real — não é campo
+  `PmtInf`/`CdtTrfTx` é `max: ilimitado` no schema — `encode/3` aceita 1
+  mensagem ou uma lista (lote: vários `PmtInf` na mesma `Document`, com
+  `NbOfTxs` ajustado) e `decode/1` devolve 1 struct ou uma lista de
+  volta, mesmo padrão do `Pacs002`/`Pacs004`/`Pacs008`. `InitgPty` no
+  `GrpHdr` é sempre `[0]{14}` (14 zeros) no schema real — não é campo
   variável, fica fixo, assim como `PmtMtd` ("TRF"), `InstrPrty` ("NORM"),
   `SvcLvl.Prtry` ("PAGAGD"), `LclInstrm.Prtry` ("AUTO") e `ChrgBr`
   ("SLEV"). Valor vai em `Amt/InstdAmt`, não `IntrBkSttlmAmt` — ainda não
@@ -63,15 +66,30 @@ defmodule Isox.Pain013 do
   @module_by_version %{v2_2: V2_2}
   @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
-  @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec encode(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
-  def encode(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v2_2] do
-    with :ok <- validate_required(message) do
+  @doc """
+  Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
+  dada. Aceita 1 mensagem ou uma lista de mensagens (lote — vira vários
+  `PmtInf` na mesma `Document`, com `NbOfTxs` ajustado à quantidade).
+
+  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML) — em
+  lote, têm que ser iguais em todos os itens da lista.
+  """
+  @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
+          {:ok, binary()} | {:error, String.t()}
+  def encode(%__MODULE__{} = message, %AppHdr{} = header, version) do
+    encode([message], header, version)
+  end
+
+  def encode([%__MODULE__{} | _] = messages, %AppHdr{} = header, version)
+      when version in [:v2_2] do
+    with :ok <- validate_all_required(messages),
+         :ok <- validate_shared_header(messages) do
       module = Map.fetch!(@module_by_version, version)
+      [first | _] = messages
 
       term = %{
         "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
-        "Document" => document_term(message)
+        "Document" => document_term(first, messages)
       }
 
       with {:ok, xml} <- module.encode(term) do
@@ -80,13 +98,16 @@ defmodule Isox.Pain013 do
     end
   end
 
-  @doc "Decodifica um XML de pain.013 de volta para a struct."
-  @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
+  @doc """
+  Decodifica um XML de pain.013 de volta para a struct — ou, quando a
+  mensagem traz mais de um `PmtInf` (lote), para uma lista de structs.
+  """
+  @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
     with {:ok, module, term} <- Isox.Registry.decode(xml),
          {:ok, version} <- version_for(module),
-         {:ok, message} <- struct_from_term(term) do
-      {:ok, message, version}
+         {:ok, message_or_messages} <- struct_from_term(term) do
+      {:ok, message_or_messages, version}
     end
   end
 
@@ -104,6 +125,15 @@ defmodule Isox.Pain013 do
     end
   end
 
+  defp validate_all_required(messages) do
+    Enum.reduce_while(messages, :ok, fn message, :ok ->
+      case validate_required(message) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
   defp validate_required(message) do
     missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
@@ -112,16 +142,26 @@ defmodule Isox.Pain013 do
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp document_term(m) do
+  defp validate_shared_header([_single]), do: :ok
+
+  defp validate_shared_header([%{msg_id: msg_id, created_at: created_at} | rest]) do
+    if Enum.all?(rest, &(&1.msg_id == msg_id and &1.created_at == created_at)) do
+      :ok
+    else
+      {:error, "msg_id/created_at precisam ser iguais em todas as mensagens do lote"}
+    end
+  end
+
+  defp document_term(first, messages) do
     %{
       "CdtrPmtActvtnReq" => %{
         "GrpHdr" => %{
-          "MsgId" => m.msg_id,
-          "CreDtTm" => format_datetime(m.created_at),
-          "NbOfTxs" => "1",
+          "MsgId" => first.msg_id,
+          "CreDtTm" => format_datetime(first.created_at),
+          "NbOfTxs" => messages |> length() |> to_string(),
           "InitgPty" => %{"Id" => %{"OrgId" => %{"Othr" => %{"Id" => String.duplicate("0", 14)}}}}
         },
-        "PmtInf" => [pmt_inf_term(m)]
+        "PmtInf" => Enum.map(messages, &pmt_inf_term/1)
       }
     }
   end
@@ -178,47 +218,42 @@ defmodule Isox.Pain013 do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
-  # PmtInf é `max: ilimitado` no schema; o modelo assume 1. `[pmt_inf] =
-  # ...` sem essa checagem crashava (MatchError) em vez de devolver erro
-  # caso o XSD permita — mesmo padrão achado com dado real em
-  # pacs.002/004/008 (ver essas mensagens), aplicado aqui por defesa mesmo
-  # sem exemplo oficial de lote pra pain.013 no catálogo atual.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "CdtrPmtActvtnReq"])
     grp = doc["GrpHdr"]
 
     case doc["PmtInf"] do
-      [pmt_inf] ->
-        ultmt_dbtr = pmt_inf["UltmtDbtr"] || %{}
-        tx = pmt_inf["CdtTrfTx"]
-        cdtr_acct = tx["CdtrAcct"]
-
-        {:ok,
-         %__MODULE__{
-           msg_id: grp["MsgId"],
-           created_at: parse_datetime(grp["CreDtTm"]),
-           pmt_inf_id: pmt_inf["PmtInfId"],
-           reqd_exctn_dt: get_in(pmt_inf, ["ReqdExctnDt", "DtTm"]) |> parse_datetime(),
-           xpry_dt: get_in(pmt_inf, ["XpryDt", "Dt"]) |> parse_date(),
-           dbtr_cpf_cnpj: get_in(pmt_inf, ["Dbtr", "Id", "PrvtId", "Othr", "Id"]),
-           dbtr_agt_ispb: get_in(pmt_inf, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-           ultmt_dbtr_name: ultmt_dbtr["Nm"],
-           ultmt_dbtr_cpf_cnpj: get_in(ultmt_dbtr, ["Id", "PrvtId", "Othr", "Id"]),
-           end_to_end_id: get_in(tx, ["PmtId", "EndToEndId"]),
-           value: get_in(tx, ["Amt", "InstdAmt", :value]),
-           mndt_id: get_in(tx, ["MndtRltdInf", "MndtId"]),
-           cdtr_agt_ispb: get_in(tx, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-           cdtr_cpf_cnpj: get_in(tx, ["Cdtr", "Id", "PrvtId", "Othr", "Id"]),
-           cdtr_acct_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
-           cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
-           cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
-           purp_prtry: get_in(tx, ["Purp", "Prtry"]),
-           rmt_inf: get_in(tx, ["RmtInf", "Ustrd"])
-         }}
-
-      pmt_infs ->
-        {:error, {:unsupported_batch, length(pmt_infs)}}
+      [pmt_inf] -> {:ok, pmt_inf_from_term(grp, pmt_inf)}
+      pmt_infs -> {:ok, Enum.map(pmt_infs, &pmt_inf_from_term(grp, &1))}
     end
+  end
+
+  defp pmt_inf_from_term(grp, pmt_inf) do
+    ultmt_dbtr = pmt_inf["UltmtDbtr"] || %{}
+    tx = pmt_inf["CdtTrfTx"]
+    cdtr_acct = tx["CdtrAcct"]
+
+    %__MODULE__{
+      msg_id: grp["MsgId"],
+      created_at: parse_datetime(grp["CreDtTm"]),
+      pmt_inf_id: pmt_inf["PmtInfId"],
+      reqd_exctn_dt: get_in(pmt_inf, ["ReqdExctnDt", "DtTm"]) |> parse_datetime(),
+      xpry_dt: get_in(pmt_inf, ["XpryDt", "Dt"]) |> parse_date(),
+      dbtr_cpf_cnpj: get_in(pmt_inf, ["Dbtr", "Id", "PrvtId", "Othr", "Id"]),
+      dbtr_agt_ispb: get_in(pmt_inf, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+      ultmt_dbtr_name: ultmt_dbtr["Nm"],
+      ultmt_dbtr_cpf_cnpj: get_in(ultmt_dbtr, ["Id", "PrvtId", "Othr", "Id"]),
+      end_to_end_id: get_in(tx, ["PmtId", "EndToEndId"]),
+      value: get_in(tx, ["Amt", "InstdAmt", :value]),
+      mndt_id: get_in(tx, ["MndtRltdInf", "MndtId"]),
+      cdtr_agt_ispb: get_in(tx, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+      cdtr_cpf_cnpj: get_in(tx, ["Cdtr", "Id", "PrvtId", "Othr", "Id"]),
+      cdtr_acct_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
+      cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
+      cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
+      purp_prtry: get_in(tx, ["Purp", "Prtry"]),
+      rmt_inf: get_in(tx, ["RmtInf", "Ustrd"])
+    }
   end
 
   defp format_datetime(%DateTime{} = dt) do

@@ -85,6 +85,40 @@ Mensagens cobertas: `Admi002`, `Admi004`, `Camt014`, `Camt025`, `Camt029`,
 `Pain014`, `Pibr001`, `Pibr002`, `Reda014`, `Reda016`, `Reda017`,
 `Reda022`, `Reda031`, `Reda041`, `Trck002`.
 
+### Lote (várias transações numa mensagem só)
+
+11 mensagens do catálogo permitem lote de verdade — o elemento de
+transação é `max: ilimitado` no XSD (`TxInf`, `CdtTrfTxInf`,
+`TxInfAndSts`, `Rpt`, `Stmt`, `Ntfctn`, `Mndt`, `UndrlygAccptncDtls`,
+`PmtInf`, `OrgnlPmtInfAndSts`, `Tx`): `Pacs002`, `Pacs004`, `Pacs008`,
+`Camt052`, `Camt053`, `Camt054`, `Pain009`, `Pain012`, `Pain013`,
+`Pain014`, `Trck002`. `Pacs002`/`Pacs004`/`Pacs008` têm exemplo oficial
+do BCB com 10 transações numa mensagem só; os outros 8 aceitam lote pelo
+mesmo motivo (o XSD permite), mesmo sem exemplo de lote no catálogo
+atual.
+
+`encode/3` aceita 1 mensagem OU uma lista (lote); `decode/1` devolve 1
+struct OU uma lista, dependendo de quantos itens o XML traz — mesma
+função, sem API paralela:
+
+```elixir
+# enviando um lote de 2 devoluções (pacs.004)
+{:ok, xml} = Isox.Pacs004.encode([devolucao1, devolucao2], header, :v1_5)
+
+# recebendo: decode devolve lista quando o XML trouxer mais de 1 item
+{:ok, [d1, d2], :v1_5} = Isox.Pacs004.decode(xml)
+
+# 1 mensagem continua funcionando igual, sem lista
+{:ok, xml} = Isox.Pacs004.encode(devolucao1, header, :v1_5)
+{:ok, ^devolucao1, :v1_5} = Isox.Pacs004.decode(xml)
+```
+
+`msg_id`/`created_at` (e, em `Pacs008`/`Pain012`, mais alguns campos de
+`GrpHdr`) são únicos por mensagem XML, não por transação — em lote,
+`encode/3` confere que todos os itens da lista concordam nesses campos
+e erra explicitamente se não concordarem, em vez de usar o primeiro e
+ignorar os outros em silêncio.
+
 ## Assinatura digital
 
 Perfil de assinatura XMLDSig do Manual de Segurança do SFN Vol. II §3:

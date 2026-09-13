@@ -4,10 +4,12 @@ defmodule Isox.Camt054 do
   Conta PI — a contrapartida contábil de cada pacs.008/002 liquidada),
   versões 1.15 e 1.16 coexistindo. A maior mensagem do catálogo.
 
-  `Ntfctn` é `max: ilimitado`, simplificado pra exatamente 1 (um
+  `Ntfctn` é `max: ilimitado` no schema — o caminho comum é 1 (um
   lançamento por notificação, como o próprio mensagens.md descreve: "um
-  por liquidação" — mesma razão do `Pacs008` pra `CdtTrfTxInf`). `Ntry`
-  já é `max: 1` no schema real.
+  por liquidação"), mas `encode/3` aceita 1 mensagem ou uma lista (lote:
+  vários `Ntfctn` na mesma `Document`) e `decode/1` devolve 1 struct ou
+  uma lista de volta, mesmo padrão do `Pacs002`/`Pacs004`/`Pacs008`.
+  `Ntry` já é `max: 1` no schema real, isso não muda.
 
   Cobre o caminho comum de um lançamento de liquidação (mesmos dados de
   pagador/recebedor do `Pacs008`, mais metadados contábeis e, quando é
@@ -93,16 +95,30 @@ defmodule Isox.Camt054 do
   @module_by_version %{v1_15: V1_15, v1_16: V1_16}
   @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
-  @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec encode(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
-  def encode(%__MODULE__{} = message, %AppHdr{} = header, version)
+  @doc """
+  Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
+  dada. Aceita 1 mensagem ou uma lista de mensagens (lote — vira vários
+  `Ntfctn` na mesma `Document`).
+
+  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML) — em
+  lote, têm que ser iguais em todos os itens da lista.
+  """
+  @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
+          {:ok, binary()} | {:error, String.t()}
+  def encode(%__MODULE__{} = message, %AppHdr{} = header, version) do
+    encode([message], header, version)
+  end
+
+  def encode([%__MODULE__{} | _] = messages, %AppHdr{} = header, version)
       when version in [:v1_15, :v1_16] do
-    with :ok <- validate_required(message) do
+    with :ok <- validate_all_required(messages),
+         :ok <- validate_shared_header(messages) do
       module = Map.fetch!(@module_by_version, version)
+      [first | _] = messages
 
       term = %{
         "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
-        "Document" => document_term(message)
+        "Document" => document_term(first, messages)
       }
 
       with {:ok, xml} <- module.encode(term) do
@@ -111,13 +127,16 @@ defmodule Isox.Camt054 do
     end
   end
 
-  @doc "Decodifica um XML de camt.054 de volta para a struct."
-  @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
+  @doc """
+  Decodifica um XML de camt.054 de volta para a struct — ou, quando a
+  mensagem traz mais de um `Ntfctn` (lote), para uma lista de structs.
+  """
+  @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
     with {:ok, module, term} <- Isox.Registry.decode(xml),
          {:ok, version} <- version_for(module),
-         {:ok, message} <- struct_from_term(term) do
-      {:ok, message, version}
+         {:ok, message_or_messages} <- struct_from_term(term) do
+      {:ok, message_or_messages, version}
     end
   end
 
@@ -135,6 +154,15 @@ defmodule Isox.Camt054 do
     end
   end
 
+  defp validate_all_required(messages) do
+    Enum.reduce_while(messages, :ok, fn message, :ok ->
+      case validate_required(message) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
   defp validate_required(message) do
     missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
@@ -143,11 +171,21 @@ defmodule Isox.Camt054 do
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp document_term(m) do
+  defp validate_shared_header([_single]), do: :ok
+
+  defp validate_shared_header([%{msg_id: msg_id, created_at: created_at} | rest]) do
+    if Enum.all?(rest, &(&1.msg_id == msg_id and &1.created_at == created_at)) do
+      :ok
+    else
+      {:error, "msg_id/created_at precisam ser iguais em todas as mensagens do lote"}
+    end
+  end
+
+  defp document_term(first, messages) do
     %{
       "BkToCstmrDbtCdtNtfctn" => %{
-        "GrpHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => format_datetime(m.created_at)},
-        "Ntfctn" => [notification_term(m)]
+        "GrpHdr" => %{"MsgId" => first.msg_id, "CreDtTm" => format_datetime(first.created_at)},
+        "Ntfctn" => Enum.map(messages, &notification_term/1)
       }
     }
   end
@@ -252,74 +290,69 @@ defmodule Isox.Camt054 do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
-  # Ntfctn é `max: ilimitado` no schema; o modelo assume 1. `[ntfctn] =
-  # ...` sem essa checagem crashava (MatchError) em vez de devolver erro
-  # caso o XSD permita — mesmo padrão achado com dado real em
-  # pacs.002/004/008 (ver essas mensagens), aplicado aqui por defesa mesmo
-  # sem exemplo oficial de lote pra camt.054 no catálogo atual.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "BkToCstmrDbtCdtNtfctn"])
     grp = doc["GrpHdr"]
 
     case doc["Ntfctn"] do
-      [ntfctn] ->
-        ntry = ntfctn["Ntry"]
-        tx = get_in(ntry, ["NtryDtls", "TxDtls"])
-        refs = tx["Refs"]
-        rltd_pties = tx["RltdPties"] || %{}
-        dbtr_acct = rltd_pties["DbtrAcct"] || %{}
-        cdtr_acct = rltd_pties["CdtrAcct"] || %{}
-        rltd_agts = tx["RltdAgts"] || %{}
-        rtr_inf = tx["RtrInf"] || %{}
-        bktxcd_domn = get_in(ntry, ["BkTxCd", "Domn"])
-
-        {:ok,
-         %__MODULE__{
-           msg_id: grp["MsgId"],
-           created_at: parse_datetime(grp["CreDtTm"]),
-           ntfctn_id: ntfctn["Id"],
-           acct_ispb: get_in(ntfctn, ["Acct", "Id", "Othr", "Id"]),
-           addtl_ntfctn_inf: ntfctn["AddtlNtfctnInf"],
-           value: get_in(ntry, ["Amt", :value]),
-           cdt_dbt_ind: ntry["CdtDbtInd"],
-           sts_cd: get_in(ntry, ["Sts", "Cd"]),
-           bookg_dt: get_in(ntry, ["BookgDt", "Dt"]) |> parse_date(),
-           val_dt: get_in(ntry, ["ValDt", "DtTm"]) |> parse_datetime(),
-           bktxcd_domn_cd: bktxcd_domn["Cd"],
-           bktxcd_fmly_cd: get_in(bktxcd_domn, ["Fmly", "Cd"]),
-           bktxcd_sub_fmly_cd: get_in(bktxcd_domn, ["Fmly", "SubFmlyCd"]),
-           addtl_ntry_inf: ntry["AddtlNtryInf"],
-           msg_nm_id: get_in(ntry, ["AddtlInfInd", "MsgNmId"]),
-           instr_id: refs["InstrId"],
-           end_to_end_id: refs["EndToEndId"],
-           tx_id: refs["TxId"],
-           clr_sys_ref: refs["ClrSysRef"],
-           prtry_ref: get_in(refs, ["Prtry", "Ref"]),
-           initg_pty_id: get_in(rltd_pties, ["InitgPty", "Pty", "Id", "OrgId", "Othr", "Id"]),
-           dbtr_name: get_in(rltd_pties, ["Dbtr", "Pty", "Nm"]),
-           dbtr_cpf_cnpj: get_in(rltd_pties, ["Dbtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
-           dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
-           dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
-           dbtr_acct_type: get_in(dbtr_acct, ["Tp", "Cd"]),
-           cdtr_cpf_cnpj: get_in(rltd_pties, ["Cdtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
-           cdtr_acct_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
-           cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
-           cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
-           cdtr_acct_proxy: get_in(cdtr_acct, ["Prxy", "Id"]),
-           dbtr_agt_ispb: get_in(rltd_agts, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-           cdtr_agt_ispb: get_in(rltd_agts, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-           lcl_instrm: get_in(tx, ["LclInstrm", "Prtry"]),
-           purp_cd: get_in(tx, ["Purp", "Cd"]),
-           rmt_inf: get_in(tx, ["RmtInf", "Ustrd"]),
-           accptnc_dt_tm: get_in(tx, ["RltdDts", "AccptncDtTm"]) |> parse_datetime(),
-           rtr_rsn_cd: get_in(rtr_inf, ["Rsn", "Cd"]),
-           rtr_rsn_addtl_inf: rtr_inf["AddtlInf"],
-           addtl_tx_inf: tx["AddtlTxInf"]
-         }}
-
-      ntfctns ->
-        {:error, {:unsupported_batch, length(ntfctns)}}
+      [ntfctn] -> {:ok, ntfctn_from_term(grp, ntfctn)}
+      ntfctns -> {:ok, Enum.map(ntfctns, &ntfctn_from_term(grp, &1))}
     end
+  end
+
+  defp ntfctn_from_term(grp, ntfctn) do
+    ntry = ntfctn["Ntry"]
+    tx = get_in(ntry, ["NtryDtls", "TxDtls"])
+    refs = tx["Refs"]
+    rltd_pties = tx["RltdPties"] || %{}
+    dbtr_acct = rltd_pties["DbtrAcct"] || %{}
+    cdtr_acct = rltd_pties["CdtrAcct"] || %{}
+    rltd_agts = tx["RltdAgts"] || %{}
+    rtr_inf = tx["RtrInf"] || %{}
+    bktxcd_domn = get_in(ntry, ["BkTxCd", "Domn"])
+
+    %__MODULE__{
+      msg_id: grp["MsgId"],
+      created_at: parse_datetime(grp["CreDtTm"]),
+      ntfctn_id: ntfctn["Id"],
+      acct_ispb: get_in(ntfctn, ["Acct", "Id", "Othr", "Id"]),
+      addtl_ntfctn_inf: ntfctn["AddtlNtfctnInf"],
+      value: get_in(ntry, ["Amt", :value]),
+      cdt_dbt_ind: ntry["CdtDbtInd"],
+      sts_cd: get_in(ntry, ["Sts", "Cd"]),
+      bookg_dt: get_in(ntry, ["BookgDt", "Dt"]) |> parse_date(),
+      val_dt: get_in(ntry, ["ValDt", "DtTm"]) |> parse_datetime(),
+      bktxcd_domn_cd: bktxcd_domn["Cd"],
+      bktxcd_fmly_cd: get_in(bktxcd_domn, ["Fmly", "Cd"]),
+      bktxcd_sub_fmly_cd: get_in(bktxcd_domn, ["Fmly", "SubFmlyCd"]),
+      addtl_ntry_inf: ntry["AddtlNtryInf"],
+      msg_nm_id: get_in(ntry, ["AddtlInfInd", "MsgNmId"]),
+      instr_id: refs["InstrId"],
+      end_to_end_id: refs["EndToEndId"],
+      tx_id: refs["TxId"],
+      clr_sys_ref: refs["ClrSysRef"],
+      prtry_ref: get_in(refs, ["Prtry", "Ref"]),
+      initg_pty_id: get_in(rltd_pties, ["InitgPty", "Pty", "Id", "OrgId", "Othr", "Id"]),
+      dbtr_name: get_in(rltd_pties, ["Dbtr", "Pty", "Nm"]),
+      dbtr_cpf_cnpj: get_in(rltd_pties, ["Dbtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
+      dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
+      dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
+      dbtr_acct_type: get_in(dbtr_acct, ["Tp", "Cd"]),
+      cdtr_cpf_cnpj: get_in(rltd_pties, ["Cdtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
+      cdtr_acct_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
+      cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
+      cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
+      cdtr_acct_proxy: get_in(cdtr_acct, ["Prxy", "Id"]),
+      dbtr_agt_ispb: get_in(rltd_agts, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+      cdtr_agt_ispb: get_in(rltd_agts, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+      lcl_instrm: get_in(tx, ["LclInstrm", "Prtry"]),
+      purp_cd: get_in(tx, ["Purp", "Cd"]),
+      rmt_inf: get_in(tx, ["RmtInf", "Ustrd"]),
+      accptnc_dt_tm: get_in(tx, ["RltdDts", "AccptncDtTm"]) |> parse_datetime(),
+      rtr_rsn_cd: get_in(rtr_inf, ["Rsn", "Cd"]),
+      rtr_rsn_addtl_inf: rtr_inf["AddtlInf"],
+      addtl_tx_inf: tx["AddtlTxInf"]
+    }
   end
 
   defp format_datetime(%DateTime{} = dt) do

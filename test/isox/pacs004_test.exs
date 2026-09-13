@@ -74,13 +74,23 @@ defmodule Isox.Pacs004Test do
 
   # TxInf é `max: ilimitado` no XSD (confirmado com exemplo oficial do
   # BCB: pacs.004_SPI_10_msg.xml vem com 10 transações numa mensagem só)
-  # — o modelo assume 1, mas decode/1 tem que errar limpo nesse caso, não
-  # crashar (MatchError), já que é uma forma de mensagem que o catálogo
-  # permite.
-  test "mensagem com mais de uma transação (lote) erra limpo, não crasha" do
-    {:ok, xml} = Pacs004.encode(@message, @header, :v1_5)
-    duplicada = String.replace(xml, ~r{(<TxInf>.*</TxInf>)}s, "\\1\\1")
+  # — encode/3 aceita uma lista de mensagens e decode/1 devolve uma
+  # lista de volta.
+  test "lote: encode aceita lista, decode devolve lista de volta" do
+    outra = %{@message | rtr_id: "D98765432202609121030abcdefghijl", rtr_rsn_cd: "SL02"}
 
-    assert {:error, {:unsupported_batch, 2}} = Pacs004.decode(duplicada)
+    assert {:ok, xml} = Pacs004.encode([@message, outra], @header, :v1_5)
+    assert {:ok, [de_volta1, de_volta2], :v1_5} = Pacs004.decode(xml)
+
+    assert de_volta1.rtr_rsn_cd == "MD06"
+    assert de_volta2.rtr_id == "D98765432202609121030abcdefghijl"
+    assert de_volta2.rtr_rsn_cd == "SL02"
+  end
+
+  test "lote: msg_id/created_at divergentes entre os itens é rejeitado" do
+    outra = %{@message | created_at: DateTime.add(@agora, 60)}
+
+    assert {:error, reason} = Pacs004.encode([@message, outra], @header, :v1_5)
+    assert reason =~ "msg_id/created_at"
   end
 end

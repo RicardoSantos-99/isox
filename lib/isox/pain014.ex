@@ -4,6 +4,11 @@ defmodule Isox.Pain014 do
   e 2.4 coexistindo. Correlaciona com a instrução agendada por
   `OrgnlPmtInfId`/`OrgnlEndToEndId`.
 
+  `OrgnlPmtInfAndSts` é `max: ilimitado` no schema — `encode/3` aceita 1
+  mensagem ou uma lista (lote: vários `OrgnlPmtInfAndSts` na mesma
+  `Document`) e `decode/1` devolve 1 struct ou uma lista de volta, mesmo
+  padrão do `Pacs002`/`Pacs004`/`Pacs008`.
+
   O schema real só define `TxSts` como `ACSP`/`RJCT` — um eventual estado
   de fila/pendência não existe neste schema, então não é modelado aqui.
 
@@ -56,16 +61,30 @@ defmodule Isox.Pain014 do
   @module_by_version %{v2_3: V2_3, v2_4: V2_4}
   @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
-  @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec encode(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
-  def encode(%__MODULE__{} = message, %AppHdr{} = header, version)
+  @doc """
+  Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
+  dada. Aceita 1 mensagem ou uma lista de mensagens (lote — vira vários
+  `OrgnlPmtInfAndSts` na mesma `Document`).
+
+  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML) — em
+  lote, têm que ser iguais em todos os itens da lista.
+  """
+  @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
+          {:ok, binary()} | {:error, String.t()}
+  def encode(%__MODULE__{} = message, %AppHdr{} = header, version) do
+    encode([message], header, version)
+  end
+
+  def encode([%__MODULE__{} | _] = messages, %AppHdr{} = header, version)
       when version in [:v2_3, :v2_4] do
-    with :ok <- validate_required(message) do
+    with :ok <- validate_all_required(messages),
+         :ok <- validate_shared_header(messages) do
       module = Map.fetch!(@module_by_version, version)
+      [first | _] = messages
 
       term = %{
         "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
-        "Document" => document_term(message)
+        "Document" => document_term(first, messages)
       }
 
       with {:ok, xml} <- module.encode(term) do
@@ -74,13 +93,17 @@ defmodule Isox.Pain014 do
     end
   end
 
-  @doc "Decodifica um XML de pain.014 de volta para a struct."
-  @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
+  @doc """
+  Decodifica um XML de pain.014 de volta para a struct — ou, quando a
+  mensagem traz mais de um `OrgnlPmtInfAndSts` (lote), para uma lista de
+  structs.
+  """
+  @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
     with {:ok, module, term} <- Isox.Registry.decode(xml),
          {:ok, version} <- version_for(module),
-         {:ok, message} <- struct_from_term(term) do
-      {:ok, message, version}
+         {:ok, message_or_messages} <- struct_from_term(term) do
+      {:ok, message_or_messages, version}
     end
   end
 
@@ -98,6 +121,15 @@ defmodule Isox.Pain014 do
     end
   end
 
+  defp validate_all_required(messages) do
+    Enum.reduce_while(messages, :ok, fn message, :ok ->
+      case validate_required(message) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
   defp validate_required(message) do
     missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
@@ -106,12 +138,22 @@ defmodule Isox.Pain014 do
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp document_term(m) do
+  defp validate_shared_header([_single]), do: :ok
+
+  defp validate_shared_header([%{msg_id: msg_id, created_at: created_at} | rest]) do
+    if Enum.all?(rest, &(&1.msg_id == msg_id and &1.created_at == created_at)) do
+      :ok
+    else
+      {:error, "msg_id/created_at precisam ser iguais em todas as mensagens do lote"}
+    end
+  end
+
+  defp document_term(first, messages) do
     %{
       "CdtrPmtActvtnReqStsRpt" => %{
         "GrpHdr" => %{
-          "MsgId" => m.msg_id,
-          "CreDtTm" => format_datetime(m.created_at),
+          "MsgId" => first.msg_id,
+          "CreDtTm" => format_datetime(first.created_at),
           "InitgPty" => %{
             "Id" => %{"OrgId" => %{"Othr" => %{"Id" => String.duplicate("0", 14)}}}
           }
@@ -120,26 +162,25 @@ defmodule Isox.Pain014 do
           "OrgnlMsgId" => String.duplicate("0", 32),
           "OrgnlMsgNmId" => String.duplicate("0", 8)
         },
-        "OrgnlPmtInfAndSts" => [
-          %{
-            "OrgnlPmtInfId" => m.orgnl_pmt_inf_id,
-            "TxInfAndSts" =>
-              %{
-                "OrgnlEndToEndId" => m.orgnl_end_to_end_id,
-                "TxSts" => m.tx_sts,
-                "DbtrDcsnDtTm" => format_datetime(m.dbtr_dcsn_dt_tm),
-                "OrgnlTxRef" => %{
-                  "CdtrAgt" => agent_term(m.cdtr_agt_ispb),
-                  "Cdtr" => %{"Id" => %{"PrvtId" => %{"Othr" => %{"Id" => m.cdtr_cpf_cnpj}}}}
-                }
-              }
-              |> maybe_put(
-                "StsRsnInf",
-                if(m.rsn_prtry, do: %{"Rsn" => %{"Prtry" => m.rsn_prtry}})
-              )
-          }
-        ]
+        "OrgnlPmtInfAndSts" => Enum.map(messages, &orgnl_pmt_inf_and_sts_term/1)
       }
+    }
+  end
+
+  defp orgnl_pmt_inf_and_sts_term(m) do
+    %{
+      "OrgnlPmtInfId" => m.orgnl_pmt_inf_id,
+      "TxInfAndSts" =>
+        %{
+          "OrgnlEndToEndId" => m.orgnl_end_to_end_id,
+          "TxSts" => m.tx_sts,
+          "DbtrDcsnDtTm" => format_datetime(m.dbtr_dcsn_dt_tm),
+          "OrgnlTxRef" => %{
+            "CdtrAgt" => agent_term(m.cdtr_agt_ispb),
+            "Cdtr" => %{"Id" => %{"PrvtId" => %{"Othr" => %{"Id" => m.cdtr_cpf_cnpj}}}}
+          }
+        }
+        |> maybe_put("StsRsnInf", if(m.rsn_prtry, do: %{"Rsn" => %{"Prtry" => m.rsn_prtry}}))
     }
   end
 
@@ -148,36 +189,30 @@ defmodule Isox.Pain014 do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
-  # OrgnlPmtInfAndSts é `max: ilimitado` no schema; o modelo assume 1.
-  # `[orgnl] = ...` sem essa checagem crashava (MatchError) em vez de
-  # devolver erro caso o XSD permita — mesmo padrão achado com dado real
-  # em pacs.002/004/008 (ver essas mensagens), aplicado aqui por defesa
-  # mesmo sem exemplo oficial de lote pra pain.014 no catálogo atual.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "CdtrPmtActvtnReqStsRpt"])
     grp = doc["GrpHdr"]
 
     case doc["OrgnlPmtInfAndSts"] do
-      [orgnl] ->
-        tx = orgnl["TxInfAndSts"]
-
-        {:ok,
-         %__MODULE__{
-           msg_id: grp["MsgId"],
-           created_at: parse_datetime(grp["CreDtTm"]),
-           orgnl_pmt_inf_id: orgnl["OrgnlPmtInfId"],
-           orgnl_end_to_end_id: tx["OrgnlEndToEndId"],
-           tx_sts: tx["TxSts"],
-           rsn_prtry: get_in(tx, ["StsRsnInf", "Rsn", "Prtry"]),
-           dbtr_dcsn_dt_tm: parse_datetime(tx["DbtrDcsnDtTm"]),
-           cdtr_agt_ispb:
-             get_in(tx, ["OrgnlTxRef", "CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-           cdtr_cpf_cnpj: get_in(tx, ["OrgnlTxRef", "Cdtr", "Id", "PrvtId", "Othr", "Id"])
-         }}
-
-      orgnls ->
-        {:error, {:unsupported_batch, length(orgnls)}}
+      [orgnl] -> {:ok, orgnl_from_term(grp, orgnl)}
+      orgnls -> {:ok, Enum.map(orgnls, &orgnl_from_term(grp, &1))}
     end
+  end
+
+  defp orgnl_from_term(grp, orgnl) do
+    tx = orgnl["TxInfAndSts"]
+
+    %__MODULE__{
+      msg_id: grp["MsgId"],
+      created_at: parse_datetime(grp["CreDtTm"]),
+      orgnl_pmt_inf_id: orgnl["OrgnlPmtInfId"],
+      orgnl_end_to_end_id: tx["OrgnlEndToEndId"],
+      tx_sts: tx["TxSts"],
+      rsn_prtry: get_in(tx, ["StsRsnInf", "Rsn", "Prtry"]),
+      dbtr_dcsn_dt_tm: parse_datetime(tx["DbtrDcsnDtTm"]),
+      cdtr_agt_ispb: get_in(tx, ["OrgnlTxRef", "CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+      cdtr_cpf_cnpj: get_in(tx, ["OrgnlTxRef", "Cdtr", "Id", "PrvtId", "Othr", "Id"])
+    }
   end
 
   defp format_datetime(%DateTime{} = dt) do

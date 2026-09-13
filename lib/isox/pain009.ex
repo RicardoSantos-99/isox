@@ -4,10 +4,12 @@ defmodule Isox.Pain009 do
   recorrência / mandato), versão 1.1 — cria o estado de mandato pendente:
   `MndtId`, frequência, datas de vigência, valor.
 
-  Modela `Mndt` como exatamente 1 por mensagem (mesma simplificação do
-  `Pacs008`). `MndtPrcgDtls` é `max: ilimitado` de verdade (histórico de
-  processamento), modelado como lista — schema exige ao menos 1.
-  `Ocrncs.SeqTp` (enum de valor único `"RCUR"`) fica fixo.
+  `Mndt` é `max: ilimitado` no schema — `encode/3` aceita 1 mensagem ou
+  uma lista (lote: vários `Mndt` na mesma `Document`) e `decode/1`
+  devolve 1 struct ou uma lista de volta, mesmo padrão do `Pacs002`/
+  `Pacs004`/`Pacs008`. `MndtPrcgDtls` é `max: ilimitado` de verdade
+  (histórico de processamento), modelado como lista — schema exige ao
+  menos 1. `Ocrncs.SeqTp` (enum de valor único `"RCUR"`) fica fixo.
   """
 
   alias Isox.AppHdr
@@ -65,15 +67,30 @@ defmodule Isox.Pain009 do
   @module_by_version %{v1_1: V1_1}
   @version_by_module Map.new(@module_by_version, fn {v, m} -> {m, v} end)
 
-  @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
-  @spec encode(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
-  def encode(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_1] do
-    with :ok <- validate_required(message) do
+  @doc """
+  Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
+  dada. Aceita 1 mensagem ou uma lista de mensagens (lote — vira vários
+  `Mndt` na mesma `Document`).
+
+  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML) — em
+  lote, têm que ser iguais em todos os itens da lista.
+  """
+  @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
+          {:ok, binary()} | {:error, String.t()}
+  def encode(%__MODULE__{} = message, %AppHdr{} = header, version) do
+    encode([message], header, version)
+  end
+
+  def encode([%__MODULE__{} | _] = messages, %AppHdr{} = header, version)
+      when version in [:v1_1] do
+    with :ok <- validate_all_required(messages),
+         :ok <- validate_shared_header(messages) do
       module = Map.fetch!(@module_by_version, version)
+      [first | _] = messages
 
       term = %{
         "AppHdr" => AppHdr.term(header, module.msg_def_idr()),
-        "Document" => document_term(message)
+        "Document" => document_term(first, messages)
       }
 
       with {:ok, xml} <- module.encode(term) do
@@ -82,13 +99,16 @@ defmodule Isox.Pain009 do
     end
   end
 
-  @doc "Decodifica um XML de pain.009 de volta para a struct."
-  @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
+  @doc """
+  Decodifica um XML de pain.009 de volta para a struct — ou, quando a
+  mensagem traz mais de um `Mndt` (lote), para uma lista de structs.
+  """
+  @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
     with {:ok, module, term} <- Isox.Registry.decode(xml),
          {:ok, version} <- version_for(module),
-         {:ok, message} <- struct_from_term(term) do
-      {:ok, message, version}
+         {:ok, message_or_messages} <- struct_from_term(term) do
+      {:ok, message_or_messages, version}
     end
   end
 
@@ -106,6 +126,15 @@ defmodule Isox.Pain009 do
     end
   end
 
+  defp validate_all_required(messages) do
+    Enum.reduce_while(messages, :ok, fn message, :ok ->
+      case validate_required(message) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
   defp validate_required(message) do
     missing = Enum.filter(@required_fields, &(Map.get(message, &1) in [nil, ""]))
 
@@ -114,11 +143,21 @@ defmodule Isox.Pain009 do
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  defp document_term(m) do
+  defp validate_shared_header([_single]), do: :ok
+
+  defp validate_shared_header([%{msg_id: msg_id, created_at: created_at} | rest]) do
+    if Enum.all?(rest, &(&1.msg_id == msg_id and &1.created_at == created_at)) do
+      :ok
+    else
+      {:error, "msg_id/created_at precisam ser iguais em todas as mensagens do lote"}
+    end
+  end
+
+  defp document_term(first, messages) do
     %{
       "MndtInitnReq" => %{
-        "GrpHdr" => %{"MsgId" => m.msg_id, "CreDtTm" => format_datetime(m.created_at)},
-        "Mndt" => [mandate_term(m)]
+        "GrpHdr" => %{"MsgId" => first.msg_id, "CreDtTm" => format_datetime(first.created_at)},
+        "Mndt" => Enum.map(messages, &mandate_term/1)
       }
     }
   end
@@ -183,55 +222,50 @@ defmodule Isox.Pain009 do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
-  # Mndt é `max: ilimitado` no schema; o modelo assume 1. `[mndt] = ...`
-  # sem essa checagem crashava (MatchError) em vez de devolver erro caso
-  # o XSD permita — mesmo padrão achado com dado real em pacs.002/004/008
-  # (ver essas mensagens), aplicado aqui por defesa mesmo sem exemplo
-  # oficial de lote pra pain.009 no catálogo atual.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "MndtInitnReq"])
     grp = doc["GrpHdr"]
 
     case doc["Mndt"] do
-      [mndt] ->
-        ocrncs = mndt["Ocrncs"]
-        adjstmnt = mndt["Adjstmnt"] || %{}
-        ultmt_dbtr = mndt["UltmtDbtr"] || %{}
-        dbtr_acct = mndt["DbtrAcct"]
-
-        {:ok,
-         %__MODULE__{
-           msg_id: grp["MsgId"],
-           created_at: parse_datetime(grp["CreDtTm"]),
-           mndt_id: mndt["MndtId"],
-           mndt_req_id: mndt["MndtReqId"],
-           frqcy_tp: get_in(ocrncs, ["Frqcy", "Tp"]),
-           frst_colltn_dt: ocrncs["FrstColltnDt"] |> parse_date(),
-           fnl_colltn_dt: ocrncs["FnlColltnDt"] |> parse_date(),
-           trckg_ind: mndt["TrckgInd"],
-           colltn_amt: get_in(mndt, ["ColltnAmt", :value]),
-           adjstmnt_dt_ind: adjstmnt["DtAdjstmntRuleInd"],
-           adjstmnt_amt: get_in(adjstmnt, ["Amt", :value]),
-           cdtr_name: get_in(mndt, ["Cdtr", "Nm"]),
-           cdtr_cpf_cnpj: get_in(mndt, ["Cdtr", "Id", "PrvtId", "Othr", "Id"]),
-           cdtr_agt_ispb: get_in(mndt, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-           dbtr_cpf_cnpj: get_in(mndt, ["Dbtr", "Id", "PrvtId", "Othr", "Id"]),
-           dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
-           dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
-           dbtr_agt_ispb: get_in(mndt, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-           ultmt_dbtr_name: ultmt_dbtr["Nm"],
-           ultmt_dbtr_cpf_cnpj: get_in(ultmt_dbtr, ["Id", "PrvtId", "Othr", "Id"]),
-           rfrd_doc_nb: get_in(mndt, ["RfrdDoc", "Nb"]),
-           rfrd_doc_cdtr_ref: get_in(mndt, ["RfrdDoc", "CdtrRef"]),
-           mndt_prcg_dtls:
-             mndt
-             |> get_in(["SplmtryData", "Envlp", "MndtPrcgDtls"])
-             |> Enum.map(&prcg_from_term/1)
-         }}
-
-      mndts ->
-        {:error, {:unsupported_batch, length(mndts)}}
+      [mndt] -> {:ok, mndt_from_term(grp, mndt)}
+      mndts -> {:ok, Enum.map(mndts, &mndt_from_term(grp, &1))}
     end
+  end
+
+  defp mndt_from_term(grp, mndt) do
+    ocrncs = mndt["Ocrncs"]
+    adjstmnt = mndt["Adjstmnt"] || %{}
+    ultmt_dbtr = mndt["UltmtDbtr"] || %{}
+    dbtr_acct = mndt["DbtrAcct"]
+
+    %__MODULE__{
+      msg_id: grp["MsgId"],
+      created_at: parse_datetime(grp["CreDtTm"]),
+      mndt_id: mndt["MndtId"],
+      mndt_req_id: mndt["MndtReqId"],
+      frqcy_tp: get_in(ocrncs, ["Frqcy", "Tp"]),
+      frst_colltn_dt: ocrncs["FrstColltnDt"] |> parse_date(),
+      fnl_colltn_dt: ocrncs["FnlColltnDt"] |> parse_date(),
+      trckg_ind: mndt["TrckgInd"],
+      colltn_amt: get_in(mndt, ["ColltnAmt", :value]),
+      adjstmnt_dt_ind: adjstmnt["DtAdjstmntRuleInd"],
+      adjstmnt_amt: get_in(adjstmnt, ["Amt", :value]),
+      cdtr_name: get_in(mndt, ["Cdtr", "Nm"]),
+      cdtr_cpf_cnpj: get_in(mndt, ["Cdtr", "Id", "PrvtId", "Othr", "Id"]),
+      cdtr_agt_ispb: get_in(mndt, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+      dbtr_cpf_cnpj: get_in(mndt, ["Dbtr", "Id", "PrvtId", "Othr", "Id"]),
+      dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
+      dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
+      dbtr_agt_ispb: get_in(mndt, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+      ultmt_dbtr_name: ultmt_dbtr["Nm"],
+      ultmt_dbtr_cpf_cnpj: get_in(ultmt_dbtr, ["Id", "PrvtId", "Othr", "Id"]),
+      rfrd_doc_nb: get_in(mndt, ["RfrdDoc", "Nb"]),
+      rfrd_doc_cdtr_ref: get_in(mndt, ["RfrdDoc", "CdtrRef"]),
+      mndt_prcg_dtls:
+        mndt
+        |> get_in(["SplmtryData", "Envlp", "MndtPrcgDtls"])
+        |> Enum.map(&prcg_from_term/1)
+    }
   end
 
   defp prcg_from_term(t), do: %{tp: t["MndtPrcgTp"], dt_tm: parse_datetime(t["PrcgDtTm"])}

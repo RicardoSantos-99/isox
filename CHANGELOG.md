@@ -9,6 +9,15 @@ Primeira versão pública.
 
 ### Adicionado
 
+- Suporte real a lote (`encode/3` aceita 1 mensagem ou uma lista;
+  `decode/1` devolve 1 struct ou uma lista, dependendo de quantos itens
+  o XML traz) nas 11 mensagens cujo elemento de transação é
+  `max: ilimitado` no XSD: `Pacs002`, `Pacs004`, `Pacs008`, `Camt052`,
+  `Camt053`, `Camt054`, `Pain009`, `Pain012`, `Pain013`, `Pain014`,
+  `Trck002`. Antes, mais de 1 transação virava
+  `{:error, {:unsupported_batch, n}}` (issue #47) — agora é suportado de
+  verdade, dos dois lados (enviar e receber), sem API paralela: a mesma
+  `encode/3`/`decode/1`, só que polimórfica.
 - `Isox.encode/2` e `Isox.decode/1`: API genérica por `Isox.Envelope`
   (cabeçalho + modelo da mensagem), que despacha pelo tipo do modelo
   (`encode/2`) ou pelo namespace do XML (`decode/1`) — não precisa mais
