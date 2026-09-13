@@ -85,13 +85,29 @@ defmodule Isox.Pacs002Test do
 
   # TxInfAndSts é `max: ilimitado` no XSD (confirmado com exemplo oficial
   # do BCB: pacs.002_SPI_10_msg.xml vem com 10 transações numa mensagem
-  # só) — o modelo assume 1, mas decode/1 tem que errar limpo nesse caso,
-  # não crashar (MatchError), já que é uma forma de mensagem que o
+  # só) — encode/3 aceita uma lista de mensagens e decode/1 devolve uma
+  # lista de volta, sem crashar e sem recusar a forma de mensagem que o
   # catálogo permite.
-  test "mensagem com mais de uma transação (lote) erra limpo, não crasha" do
-    {:ok, xml} = Pacs002.encode(@message, @header, :v1_17)
-    duplicada = String.replace(xml, ~r{(<TxInfAndSts>.*</TxInfAndSts>)}s, "\\1\\1")
+  test "lote: encode aceita lista, decode devolve lista de volta" do
+    outra = %{
+      @message
+      | tx_sts: "RJCT",
+        sts_rsn_cd: "AC03",
+        orgnl_instr_id: "E98765432202609121030abcdefghijl"
+    }
 
-    assert {:error, {:unsupported_batch, 2}} = Pacs002.decode(duplicada)
+    assert {:ok, xml} = Pacs002.encode([@message, outra], @header, :v1_17)
+    assert {:ok, [de_volta1, de_volta2], :v1_17} = Pacs002.decode(xml)
+
+    assert de_volta1.tx_sts == "ACSC"
+    assert de_volta2.tx_sts == "RJCT"
+    assert de_volta2.sts_rsn_cd == "AC03"
+  end
+
+  test "lote: msg_id/created_at divergentes entre os itens é rejeitado" do
+    outra = %{@message | created_at: DateTime.add(@agora, 60)}
+
+    assert {:error, reason} = Pacs002.encode([@message, outra], @header, :v1_17)
+    assert reason =~ "msg_id/created_at"
   end
 end
