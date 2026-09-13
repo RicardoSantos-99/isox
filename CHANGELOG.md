@@ -43,6 +43,24 @@ Primeira versão pública.
 
 ### Corrigido
 
+- `Reda016`: nada validava a regra cruzada entre `sts`, `rsn_prtry` e
+  `sys_pty_ispb` — dava pra montar um `"COMP"` (sucesso) sem
+  `SysPtyId` (mesmo a planilha do catálogo exigindo explicitamente:
+  "devem ser preenchidos caso Status seja 'COMP'") ou carregando um
+  motivo de erro sobrando, ou um `"QUED"`/`"REJT"` sem motivo, sem erro
+  nenhum — o próprio teste do módulo tinha essa combinação inconsistente
+  (`"COMP"` sem `SysPtyId`) sem ninguém notar. A moduledoc também só
+  mencionava 2 dos 3 status reais (`Status6Code` tem `COMP`/`QUED`/
+  `REJT` — `QUED`, fila/pendência, usa motivo igual `REJT`, confirmado
+  pelo exemplo oficial). `encode/3` agora valida tudo isso, confirmado
+  pelos 3 exemplos oficiais do BCB (2 por versão do catálogo, XSD
+  idêntico). Também corrigido: `rspnsbl_pty_ispb` preenchido sem
+  `sys_pty_ispb` era descartado silenciosamente no encode (o elemento
+  contêiner `SysPtyId` só é emitido quando `sys_pty_ispb` existe) —
+  agora é rejeitado explicitamente em vez de perder o dado calado.
+  Achado no deep dive de validação do catálogo (issue #58, reda.016).
+
+
 - `Pain014`: nada validava a regra cruzada da planilha do catálogo
   entre `tx_sts` e `rsn_prtry` — dava pra montar um `ACSP` (aceite) com
   motivo sobrando, ou um `RJCT` (rejeição) sem motivo nenhum, sem erro

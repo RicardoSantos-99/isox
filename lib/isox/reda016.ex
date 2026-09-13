@@ -4,10 +4,14 @@ defmodule Isox.Reda016 do
   reda.014/022/031), versão 1.5. Correlaciona com o pedido original por
   `OrgnlBizInstr.MsgId`.
 
-  `rsn_prtry` só faz sentido quando `sts` é rejeição; `sys_pty_ispb`
-  (e, dentro dele, `rspnsbl_pty_ispb`) só quando o pedido teve sucesso —
-  ambos opcionais, cada um controlando a presença do próprio elemento
-  contêiner (`StsRsn`/`SysPtyId`).
+  `sts` tem 3 valores possíveis (`Status6Code`): `"COMP"` (sucesso),
+  `"QUED"` (fila/pendência) e `"REJT"` (rejeição) — confirmado pelos 3
+  exemplos oficiais do BCB. `rsn_prtry`/`StsRsn` é obrigatório em
+  `"QUED"`/`"REJT"` e proibido em `"COMP"`; `sys_pty_ispb`/`SysPtyId` é
+  o inverso — obrigatório em `"COMP"` (regra explícita da planilha do
+  catálogo) e proibido em `"QUED"`/`"REJT"`. `rspnsbl_pty_ispb` só faz
+  sentido dentro de `SysPtyId`, ou seja, exige `sys_pty_ispb`.
+  `encode/3` valida tudo isso.
   """
 
   alias Isox.AppHdr
@@ -43,7 +47,8 @@ defmodule Isox.Reda016 do
   @doc "Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão dada."
   @spec encode(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
   def encode(%__MODULE__{} = message, %AppHdr{} = header, version) when version in [:v1_5] do
-    with :ok <- validate_required(message) do
+    with :ok <- validate_required(message),
+         :ok <- validate_status_consistency(message) do
       module = Map.fetch!(@module_by_version, version)
 
       term = %{
@@ -86,6 +91,30 @@ defmodule Isox.Reda016 do
       do: :ok,
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
+
+  defp validate_status_consistency(%{sts: "COMP", rsn_prtry: rsn}) when not is_nil(rsn) do
+    {:error, "rsn_prtry não deve ser preenchido quando sts = \"COMP\""}
+  end
+
+  defp validate_status_consistency(%{sts: "COMP", sys_pty_ispb: nil}) do
+    {:error, "sys_pty_ispb é obrigatório quando sts = \"COMP\""}
+  end
+
+  defp validate_status_consistency(%{sts: sts, rsn_prtry: nil}) when sts in ["QUED", "REJT"] do
+    {:error, "rsn_prtry é obrigatório quando sts = #{inspect(sts)}"}
+  end
+
+  defp validate_status_consistency(%{sts: sts, sys_pty_ispb: ispb})
+       when sts in ["QUED", "REJT"] and not is_nil(ispb) do
+    {:error, "sys_pty_ispb não deve ser preenchido quando sts = #{inspect(sts)}"}
+  end
+
+  defp validate_status_consistency(%{sys_pty_ispb: nil, rspnsbl_pty_ispb: rspnsbl})
+       when not is_nil(rspnsbl) do
+    {:error, "rspnsbl_pty_ispb não pode ser preenchido sem sys_pty_ispb"}
+  end
+
+  defp validate_status_consistency(_message), do: :ok
 
   defp document_term(m) do
     %{

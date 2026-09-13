@@ -17,15 +17,16 @@ defmodule Isox.Reda016Test do
     sts: "COMP"
   }
 
-  test "sucesso: só sts + correlação, sem motivo nem SysPtyId" do
-    assert {:ok, xml} = Reda016.encode(@message, @header, :v1_5)
+  test "sucesso: sts COMP com SysPtyId obrigatório, sem motivo" do
+    message = %{@message | sys_pty_ispb: "22222222"}
+
+    assert {:ok, xml} = Reda016.encode(message, @header, :v1_5)
     assert {:ok, de_volta, :v1_5} = Reda016.decode(xml)
 
     assert de_volta.sts == "COMP"
     assert de_volta.rsn_prtry == nil
-    assert de_volta.sys_pty_ispb == nil
+    assert de_volta.sys_pty_ispb == "22222222"
     refute xml =~ "StsRsn"
-    refute xml =~ "SysPtyId"
   end
 
   test "rejeição: motivo presente" do
@@ -52,5 +53,47 @@ defmodule Isox.Reda016Test do
     """
 
     assert {:error, _reason} = Reda016.decode(outro_xml)
+  end
+
+  test "fila (QUED): motivo presente, igual à rejeição" do
+    message = %{@message | sts: "QUED", rsn_prtry: "EXP5"}
+
+    assert {:ok, xml} = Reda016.encode(message, @header, :v1_5)
+    assert {:ok, de_volta, :v1_5} = Reda016.decode(xml)
+    assert de_volta.sts == "QUED"
+    assert de_volta.rsn_prtry == "EXP5"
+  end
+
+  test "COMP com rsn_prtry preenchido é rejeitado" do
+    message = %{@message | sys_pty_ispb: "22222222", rsn_prtry: "IND2"}
+
+    assert {:error, reason} = Reda016.encode(message, @header, :v1_5)
+    assert reason =~ "rsn_prtry"
+  end
+
+  test "COMP sem sys_pty_ispb é rejeitado" do
+    assert {:error, reason} = Reda016.encode(@message, @header, :v1_5)
+    assert reason =~ "sys_pty_ispb"
+  end
+
+  test "REJT/QUED sem rsn_prtry é rejeitado" do
+    message = %{@message | sts: "REJT", rsn_prtry: nil}
+    assert {:error, reason} = Reda016.encode(message, @header, :v1_5)
+    assert reason =~ "rsn_prtry"
+
+    message = %{@message | sts: "QUED", rsn_prtry: nil}
+    assert {:error, _reason} = Reda016.encode(message, @header, :v1_5)
+  end
+
+  test "REJT/QUED com sys_pty_ispb preenchido é rejeitado" do
+    message = %{@message | sts: "REJT", rsn_prtry: "IND2", sys_pty_ispb: "22222222"}
+    assert {:error, reason} = Reda016.encode(message, @header, :v1_5)
+    assert reason =~ "sys_pty_ispb"
+  end
+
+  test "rspnsbl_pty_ispb sem sys_pty_ispb é rejeitado" do
+    message = %{@message | sts: "REJT", rsn_prtry: "IND2", rspnsbl_pty_ispb: "11111111"}
+    assert {:error, reason} = Reda016.encode(message, @header, :v1_5)
+    assert reason =~ "rspnsbl_pty_ispb"
   end
 end
