@@ -3,7 +3,7 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 este projeto segue [versionamento semântico](https://semver.org/lang/pt-BR/).
 
-## [0.1.0] - Não lançado
+## [0.1.0] - 2026-09-13
 
 Primeira versão pública.
 
