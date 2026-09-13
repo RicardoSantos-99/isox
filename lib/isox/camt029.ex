@@ -1,10 +1,18 @@
 defmodule Isox.Camt029 do
   @moduledoc """
   Modelo ISO 20022 do camt.029 (resposta ao camt.055 — aceite
-  `ACCR` ou rejeição `RJCR`), versões 1.1 e 1.2 coexistindo. Correlaciona
-  com o `PmtCxlId` do camt.055 original (aqui `OrgnlPmtInfCxlId`).
+  `ACCR` ou rejeição `RJCR`), versões 1.1 e 1.2 coexistindo (enums de
+  `rsn_prtry` diferem entre as duas: `v1_1` tem 4 códigos a mais que
+  `v1_2`). Correlaciona com o `PmtCxlId` do camt.055 original (aqui
+  `OrgnlPmtInfCxlId`).
 
   `Sts.Conf` (enum de valor único `"INFO"`) fica fixo.
+
+  Regra da planilha do catálogo, sem contrapartida no XSD (que não
+  expressa regra cruzada entre campos): `pmt_inf_cxl_sts == "ACCR"`
+  exige `rsn_prtry` ausente e `cxl_prcg_tp == "DHAC"`;
+  `pmt_inf_cxl_sts == "RJCR"` exige `rsn_prtry` presente e
+  `cxl_prcg_tp == "DHRC"`. `encode/3` valida isso explicitamente.
   """
 
   alias Isox.AppHdr
@@ -60,7 +68,8 @@ defmodule Isox.Camt029 do
   @spec encode(t(), AppHdr.t(), version()) :: {:ok, binary()} | {:error, String.t()}
   def encode(%__MODULE__{} = message, %AppHdr{} = header, version)
       when version in [:v1_1, :v1_2] do
-    with :ok <- validate_required(message) do
+    with :ok <- validate_required(message),
+         :ok <- validate_cancellation_consistency(message) do
       module = Map.fetch!(@module_by_version, version)
 
       term = %{
@@ -103,6 +112,42 @@ defmodule Isox.Camt029 do
       do: :ok,
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
+
+  # "Regra para o Brasil" da planilha (confirmada pelos dois exemplos
+  # oficiais do BCB, ACEITA/REJEITA): ACCR nunca leva motivo e sempre é
+  # DHAC; RJCR sempre leva motivo e sempre é DHRC. O XSD não força nada
+  # disso (CxlStsRsnInf é só opcional pro schema; cxl_prcg_tp é campo
+  # livre com seu próprio enum) — sem esta checagem, dava pra montar um
+  # RJCR sem motivo nenhum (mensagem estruturalmente válida, mas muda
+  # sem dizer por quê) ou uma combinação ACCR/DHRC inconsistente, sem
+  # erro nenhum em lugar nenhum.
+  defp validate_cancellation_consistency(%{pmt_inf_cxl_sts: "ACCR"} = m) do
+    cond do
+      m.rsn_prtry != nil ->
+        {:error, "rsn_prtry não deve ser informado quando pmt_inf_cxl_sts é ACCR"}
+
+      m.cxl_prcg_tp != "DHAC" ->
+        {:error, "cxl_prcg_tp deve ser \"DHAC\" quando pmt_inf_cxl_sts é ACCR"}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_cancellation_consistency(%{pmt_inf_cxl_sts: "RJCR"} = m) do
+    cond do
+      m.rsn_prtry == nil ->
+        {:error, "rsn_prtry é obrigatório quando pmt_inf_cxl_sts é RJCR"}
+
+      m.cxl_prcg_tp != "DHRC" ->
+        {:error, "cxl_prcg_tp deve ser \"DHRC\" quando pmt_inf_cxl_sts é RJCR"}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_cancellation_consistency(_message), do: :ok
 
   defp document_term(m) do
     %{

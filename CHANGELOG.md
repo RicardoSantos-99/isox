@@ -43,6 +43,18 @@ Primeira versão pública.
 
 ### Corrigido
 
+- `Camt029`: nada validava a regra cruzada da planilha do catálogo
+  entre `pmt_inf_cxl_sts`, `rsn_prtry` e `cxl_prcg_tp` — dava pra montar
+  um `RJCR` (rejeição) sem motivo nenhum, ou uma combinação `ACCR`
+  (aceite) com motivo sobrando, ou `cxl_prcg_tp` inconsistente com o
+  status, tudo sem nenhum erro (o próprio teste do módulo tinha essa
+  combinação inconsistente sem ninguém notar). `encode/3` agora valida
+  explicitamente: `ACCR` exige `rsn_prtry` ausente e `cxl_prcg_tp ==
+  "DHAC"`; `RJCR` exige `rsn_prtry` presente e `cxl_prcg_tp == "DHRC"`
+  — confirmado pelos 4 exemplos oficiais do BCB (2 por versão do
+  catálogo). Achado no deep dive de validação do catálogo (issue #41,
+  camt.029).
+
 - `Camt025`: `StsRsn.AddtlInf` (opcional) estava sendo tratado como
   incondicional e `StsRsn.Rsn` (obrigatório no schema sempre que
   `StsRsn` aparece) como condicional — o inverso do XSD real. Na prática

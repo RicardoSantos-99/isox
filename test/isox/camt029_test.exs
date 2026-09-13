@@ -33,11 +33,39 @@ defmodule Isox.Camt029Test do
   end
 
   test "rejeição com reason" do
-    message = %{@message | pmt_inf_cxl_sts: "RJCR", rsn_prtry: "CH16"}
+    message = %{
+      @message
+      | pmt_inf_cxl_sts: "RJCR",
+        rsn_prtry: "CH16",
+        cxl_prcg_tp: "DHRC"
+    }
 
     assert {:ok, xml} = Camt029.encode(message, @header, :v1_2)
     assert {:ok, de_volta, :v1_2} = Camt029.decode(xml)
     assert de_volta.rsn_prtry == "CH16"
+  end
+
+  # planilha do catálogo: ACCR nunca leva motivo, RJCR sempre leva —
+  # confirmado pelos exemplos oficiais camt.029_ACEITA/REJEITA_CANCELAMENTO.
+  test "ACCR com reason é rejeitado" do
+    message = %{@message | rsn_prtry: "CH16"}
+
+    assert {:error, reason} = Camt029.encode(message, @header, :v1_1)
+    assert reason =~ "rsn_prtry"
+  end
+
+  test "RJCR sem reason é rejeitado" do
+    message = %{@message | pmt_inf_cxl_sts: "RJCR", cxl_prcg_tp: "DHRC"}
+
+    assert {:error, reason} = Camt029.encode(message, @header, :v1_1)
+    assert reason =~ "rsn_prtry"
+  end
+
+  test "cxl_prcg_tp inconsistente com pmt_inf_cxl_sts é rejeitado" do
+    message = %{@message | pmt_inf_cxl_sts: "RJCR", rsn_prtry: "CH16", cxl_prcg_tp: "DHAC"}
+
+    assert {:error, reason} = Camt029.encode(message, @header, :v1_1)
+    assert reason =~ "cxl_prcg_tp"
   end
 
   test "campo obrigatório ausente é rejeitado antes de montar XML" do
