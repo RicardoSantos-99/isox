@@ -94,15 +94,17 @@ defmodule Isox.Pain012 do
   @doc "Decodifica um XML de pain.012 de volta para a struct."
   @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
-    case Isox.Registry.decode(xml) do
-      {:ok, module, term} ->
-        case Map.fetch(@version_by_module, module) do
-          {:ok, version} -> {:ok, struct_from_term(term), version}
-          :error -> {:error, {:not_pain012, module.msg_def_idr()}}
-        end
+    with {:ok, module, term} <- Isox.Registry.decode(xml),
+         {:ok, version} <- version_for(module),
+         {:ok, message} <- struct_from_term(term) do
+      {:ok, message, version}
+    end
+  end
 
-      error ->
-        error
+  defp version_for(module) do
+    case Map.fetch(@version_by_module, module) do
+      {:ok, version} -> {:ok, version}
+      :error -> {:error, {:not_pain012, module.msg_def_idr()}}
     end
   end
 
@@ -211,45 +213,57 @@ defmodule Isox.Pain012 do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
+  # UndrlygAccptncDtls é `max: ilimitado` no schema; o modelo assume 1.
+  # `[detalhe] = ...` sem essa checagem crashava (MatchError) em vez de
+  # devolver erro caso o XSD permita — mesmo padrão achado com dado real
+  # em pacs.002/004/008 (ver essas mensagens), aplicado aqui por defesa
+  # mesmo sem exemplo oficial de lote pra pain.012 no catálogo atual.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "MndtAccptncRpt"])
     grp = doc["GrpHdr"]
-    [detalhe] = doc["UndrlygAccptncDtls"]
-    mndt = get_in(detalhe, ["OrgnlMndt", "OrgnlMndt"])
-    ocrncs = mndt["Ocrncs"]
-    ultmt_dbtr = mndt["UltmtDbtr"] || %{}
-    dbtr_acct = mndt["DbtrAcct"]
-    envlp = get_in(detalhe, ["SplmtryData", "Envlp"]) || %{}
 
-    %__MODULE__{
-      msg_id: grp["MsgId"],
-      created_at: parse_datetime(grp["CreDtTm"]),
-      instg_agt_ispb: get_in(grp, ["InstgAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      accptd: get_in(detalhe, ["AccptncRslt", "Accptd"]),
-      rjct_rsn_prtry: get_in(detalhe, ["AccptncRslt", "RjctRsn", "Prtry"]),
-      orgnl_mndt_id: mndt["MndtId"],
-      orgnl_mndt_req_id: mndt["MndtReqId"],
-      orgnl_frqcy_tp: get_in(ocrncs, ["Frqcy", "Tp"]),
-      orgnl_frst_colltn_dt: ocrncs["FrstColltnDt"] |> parse_date(),
-      orgnl_fnl_colltn_dt: ocrncs["FnlColltnDt"] |> parse_date(),
-      orgnl_trckg_ind: mndt["TrckgInd"],
-      orgnl_colltn_amt: get_in(mndt, ["ColltnAmt", :value]),
-      orgnl_cdtr_name: get_in(mndt, ["Cdtr", "Nm"]),
-      orgnl_cdtr_cpf_cnpj: get_in(mndt, ["Cdtr", "Id", "PrvtId", "Othr", "Id"]),
-      orgnl_cdtr_agt_ispb: get_in(mndt, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      orgnl_dbtr_twn_nm: get_in(mndt, ["Dbtr", "PstlAdr", "TwnNm"]),
-      orgnl_dbtr_cpf_cnpj: get_in(mndt, ["Dbtr", "Id", "PrvtId", "Othr", "Id"]),
-      orgnl_dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
-      orgnl_dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
-      orgnl_dbtr_agt_ispb: get_in(mndt, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      orgnl_ultmt_dbtr_name: ultmt_dbtr["Nm"],
-      orgnl_ultmt_dbtr_cpf_cnpj: get_in(ultmt_dbtr, ["Id", "PrvtId", "Othr", "Id"]),
-      orgnl_mndt_ref: mndt["MndtRef"],
-      orgnl_rfrd_doc_nb: get_in(mndt, ["RfrdDoc", "Nb"]),
-      orgnl_rfrd_doc_cdtr_ref: get_in(mndt, ["RfrdDoc", "CdtrRef"]),
-      mndt_sts: envlp["MndtSts"],
-      mndt_prcg_dtls: envlp |> Map.get("MndtPrcgDtls", []) |> Enum.map(&prcg_from_term/1)
-    }
+    case doc["UndrlygAccptncDtls"] do
+      [detalhe] ->
+        mndt = get_in(detalhe, ["OrgnlMndt", "OrgnlMndt"])
+        ocrncs = mndt["Ocrncs"]
+        ultmt_dbtr = mndt["UltmtDbtr"] || %{}
+        dbtr_acct = mndt["DbtrAcct"]
+        envlp = get_in(detalhe, ["SplmtryData", "Envlp"]) || %{}
+
+        {:ok,
+         %__MODULE__{
+           msg_id: grp["MsgId"],
+           created_at: parse_datetime(grp["CreDtTm"]),
+           instg_agt_ispb: get_in(grp, ["InstgAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+           accptd: get_in(detalhe, ["AccptncRslt", "Accptd"]),
+           rjct_rsn_prtry: get_in(detalhe, ["AccptncRslt", "RjctRsn", "Prtry"]),
+           orgnl_mndt_id: mndt["MndtId"],
+           orgnl_mndt_req_id: mndt["MndtReqId"],
+           orgnl_frqcy_tp: get_in(ocrncs, ["Frqcy", "Tp"]),
+           orgnl_frst_colltn_dt: ocrncs["FrstColltnDt"] |> parse_date(),
+           orgnl_fnl_colltn_dt: ocrncs["FnlColltnDt"] |> parse_date(),
+           orgnl_trckg_ind: mndt["TrckgInd"],
+           orgnl_colltn_amt: get_in(mndt, ["ColltnAmt", :value]),
+           orgnl_cdtr_name: get_in(mndt, ["Cdtr", "Nm"]),
+           orgnl_cdtr_cpf_cnpj: get_in(mndt, ["Cdtr", "Id", "PrvtId", "Othr", "Id"]),
+           orgnl_cdtr_agt_ispb: get_in(mndt, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+           orgnl_dbtr_twn_nm: get_in(mndt, ["Dbtr", "PstlAdr", "TwnNm"]),
+           orgnl_dbtr_cpf_cnpj: get_in(mndt, ["Dbtr", "Id", "PrvtId", "Othr", "Id"]),
+           orgnl_dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
+           orgnl_dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
+           orgnl_dbtr_agt_ispb: get_in(mndt, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+           orgnl_ultmt_dbtr_name: ultmt_dbtr["Nm"],
+           orgnl_ultmt_dbtr_cpf_cnpj: get_in(ultmt_dbtr, ["Id", "PrvtId", "Othr", "Id"]),
+           orgnl_mndt_ref: mndt["MndtRef"],
+           orgnl_rfrd_doc_nb: get_in(mndt, ["RfrdDoc", "Nb"]),
+           orgnl_rfrd_doc_cdtr_ref: get_in(mndt, ["RfrdDoc", "CdtrRef"]),
+           mndt_sts: envlp["MndtSts"],
+           mndt_prcg_dtls: envlp |> Map.get("MndtPrcgDtls", []) |> Enum.map(&prcg_from_term/1)
+         }}
+
+      detalhes ->
+        {:error, {:unsupported_batch, length(detalhes)}}
+    end
   end
 
   defp prcg_from_term(t), do: %{tp: t["MndtPrcgTp"], dt_tm: parse_datetime(t["PrcgDtTm"])}

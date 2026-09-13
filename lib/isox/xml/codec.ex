@@ -259,6 +259,7 @@ defmodule Isox.Xml.Codec do
     end
 
     validate_decimal!(value, type)
+    validate_date!(value, type)
 
     value
   end
@@ -330,6 +331,23 @@ defmodule Isox.Xml.Codec do
       raise "valor #{inspect(value)} excede o máximo permitido (#{max_inclusive})"
     end
   end
+
+  # xs:date (ex.: OrgnlTxRef/IntrBkSttlmDt do pacs.002) nunca vem com
+  # pattern no XSD do catálogo — <xs:restriction base="xs:date"/> vazio,
+  # confiando na validação léxica embutida do xs:date. Este motor não
+  # implementa isso, então sem este check um valor não-data passava reto
+  # pelo parse e só quebrava (raise não capturado) mais tarde, dentro do
+  # parse_date! de quem lê o termo — depois da zona protegida pelo rescue
+  # de Codec.parse/2. Usa o mesmo Date.from_iso8601/1 que esse parse final
+  # já usa, pra não ter padrão duplo entre o que valida aqui e o que quem
+  # chama espera conseguir parsear depois.
+  defp validate_date!(value, %SimpleType{base: "date"}) do
+    if match?({:error, _}, Date.from_iso8601(value)) do
+      raise "valor #{inspect(value)} não é uma data válida (YYYY-MM-DD)"
+    end
+  end
+
+  defp validate_date!(_value, _type), do: :ok
 
   # named_captures, não Regex.run posicional: quando o grupo fracionário
   # opcional não participa do match (valor sem ponto decimal, ex. "0"), o

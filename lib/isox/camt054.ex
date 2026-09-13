@@ -114,15 +114,17 @@ defmodule Isox.Camt054 do
   @doc "Decodifica um XML de camt.054 de volta para a struct."
   @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
-    case Isox.Registry.decode(xml) do
-      {:ok, module, term} ->
-        case Map.fetch(@version_by_module, module) do
-          {:ok, version} -> {:ok, struct_from_term(term), version}
-          :error -> {:error, {:not_camt054, module.msg_def_idr()}}
-        end
+    with {:ok, module, term} <- Isox.Registry.decode(xml),
+         {:ok, version} <- version_for(module),
+         {:ok, message} <- struct_from_term(term) do
+      {:ok, message, version}
+    end
+  end
 
-      error ->
-        error
+  defp version_for(module) do
+    case Map.fetch(@version_by_module, module) do
+      {:ok, version} -> {:ok, version}
+      :error -> {:error, {:not_camt054, module.msg_def_idr()}}
     end
   end
 
@@ -250,62 +252,74 @@ defmodule Isox.Camt054 do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
+  # Ntfctn é `max: ilimitado` no schema; o modelo assume 1. `[ntfctn] =
+  # ...` sem essa checagem crashava (MatchError) em vez de devolver erro
+  # caso o XSD permita — mesmo padrão achado com dado real em
+  # pacs.002/004/008 (ver essas mensagens), aplicado aqui por defesa mesmo
+  # sem exemplo oficial de lote pra camt.054 no catálogo atual.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "BkToCstmrDbtCdtNtfctn"])
     grp = doc["GrpHdr"]
-    [ntfctn] = doc["Ntfctn"]
-    ntry = ntfctn["Ntry"]
-    tx = get_in(ntry, ["NtryDtls", "TxDtls"])
-    refs = tx["Refs"]
-    rltd_pties = tx["RltdPties"] || %{}
-    dbtr_acct = rltd_pties["DbtrAcct"] || %{}
-    cdtr_acct = rltd_pties["CdtrAcct"] || %{}
-    rltd_agts = tx["RltdAgts"] || %{}
-    rtr_inf = tx["RtrInf"] || %{}
-    bktxcd_domn = get_in(ntry, ["BkTxCd", "Domn"])
 
-    %__MODULE__{
-      msg_id: grp["MsgId"],
-      created_at: parse_datetime(grp["CreDtTm"]),
-      ntfctn_id: ntfctn["Id"],
-      acct_ispb: get_in(ntfctn, ["Acct", "Id", "Othr", "Id"]),
-      addtl_ntfctn_inf: ntfctn["AddtlNtfctnInf"],
-      value: get_in(ntry, ["Amt", :value]),
-      cdt_dbt_ind: ntry["CdtDbtInd"],
-      sts_cd: get_in(ntry, ["Sts", "Cd"]),
-      bookg_dt: get_in(ntry, ["BookgDt", "Dt"]) |> parse_date(),
-      val_dt: get_in(ntry, ["ValDt", "DtTm"]) |> parse_datetime(),
-      bktxcd_domn_cd: bktxcd_domn["Cd"],
-      bktxcd_fmly_cd: get_in(bktxcd_domn, ["Fmly", "Cd"]),
-      bktxcd_sub_fmly_cd: get_in(bktxcd_domn, ["Fmly", "SubFmlyCd"]),
-      addtl_ntry_inf: ntry["AddtlNtryInf"],
-      msg_nm_id: get_in(ntry, ["AddtlInfInd", "MsgNmId"]),
-      instr_id: refs["InstrId"],
-      end_to_end_id: refs["EndToEndId"],
-      tx_id: refs["TxId"],
-      clr_sys_ref: refs["ClrSysRef"],
-      prtry_ref: get_in(refs, ["Prtry", "Ref"]),
-      initg_pty_id: get_in(rltd_pties, ["InitgPty", "Pty", "Id", "OrgId", "Othr", "Id"]),
-      dbtr_name: get_in(rltd_pties, ["Dbtr", "Pty", "Nm"]),
-      dbtr_cpf_cnpj: get_in(rltd_pties, ["Dbtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
-      dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
-      dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
-      dbtr_acct_type: get_in(dbtr_acct, ["Tp", "Cd"]),
-      cdtr_cpf_cnpj: get_in(rltd_pties, ["Cdtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
-      cdtr_acct_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
-      cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
-      cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
-      cdtr_acct_proxy: get_in(cdtr_acct, ["Prxy", "Id"]),
-      dbtr_agt_ispb: get_in(rltd_agts, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      cdtr_agt_ispb: get_in(rltd_agts, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      lcl_instrm: get_in(tx, ["LclInstrm", "Prtry"]),
-      purp_cd: get_in(tx, ["Purp", "Cd"]),
-      rmt_inf: get_in(tx, ["RmtInf", "Ustrd"]),
-      accptnc_dt_tm: get_in(tx, ["RltdDts", "AccptncDtTm"]) |> parse_datetime(),
-      rtr_rsn_cd: get_in(rtr_inf, ["Rsn", "Cd"]),
-      rtr_rsn_addtl_inf: rtr_inf["AddtlInf"],
-      addtl_tx_inf: tx["AddtlTxInf"]
-    }
+    case doc["Ntfctn"] do
+      [ntfctn] ->
+        ntry = ntfctn["Ntry"]
+        tx = get_in(ntry, ["NtryDtls", "TxDtls"])
+        refs = tx["Refs"]
+        rltd_pties = tx["RltdPties"] || %{}
+        dbtr_acct = rltd_pties["DbtrAcct"] || %{}
+        cdtr_acct = rltd_pties["CdtrAcct"] || %{}
+        rltd_agts = tx["RltdAgts"] || %{}
+        rtr_inf = tx["RtrInf"] || %{}
+        bktxcd_domn = get_in(ntry, ["BkTxCd", "Domn"])
+
+        {:ok,
+         %__MODULE__{
+           msg_id: grp["MsgId"],
+           created_at: parse_datetime(grp["CreDtTm"]),
+           ntfctn_id: ntfctn["Id"],
+           acct_ispb: get_in(ntfctn, ["Acct", "Id", "Othr", "Id"]),
+           addtl_ntfctn_inf: ntfctn["AddtlNtfctnInf"],
+           value: get_in(ntry, ["Amt", :value]),
+           cdt_dbt_ind: ntry["CdtDbtInd"],
+           sts_cd: get_in(ntry, ["Sts", "Cd"]),
+           bookg_dt: get_in(ntry, ["BookgDt", "Dt"]) |> parse_date(),
+           val_dt: get_in(ntry, ["ValDt", "DtTm"]) |> parse_datetime(),
+           bktxcd_domn_cd: bktxcd_domn["Cd"],
+           bktxcd_fmly_cd: get_in(bktxcd_domn, ["Fmly", "Cd"]),
+           bktxcd_sub_fmly_cd: get_in(bktxcd_domn, ["Fmly", "SubFmlyCd"]),
+           addtl_ntry_inf: ntry["AddtlNtryInf"],
+           msg_nm_id: get_in(ntry, ["AddtlInfInd", "MsgNmId"]),
+           instr_id: refs["InstrId"],
+           end_to_end_id: refs["EndToEndId"],
+           tx_id: refs["TxId"],
+           clr_sys_ref: refs["ClrSysRef"],
+           prtry_ref: get_in(refs, ["Prtry", "Ref"]),
+           initg_pty_id: get_in(rltd_pties, ["InitgPty", "Pty", "Id", "OrgId", "Othr", "Id"]),
+           dbtr_name: get_in(rltd_pties, ["Dbtr", "Pty", "Nm"]),
+           dbtr_cpf_cnpj: get_in(rltd_pties, ["Dbtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
+           dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
+           dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
+           dbtr_acct_type: get_in(dbtr_acct, ["Tp", "Cd"]),
+           cdtr_cpf_cnpj: get_in(rltd_pties, ["Cdtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
+           cdtr_acct_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
+           cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
+           cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
+           cdtr_acct_proxy: get_in(cdtr_acct, ["Prxy", "Id"]),
+           dbtr_agt_ispb: get_in(rltd_agts, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+           cdtr_agt_ispb: get_in(rltd_agts, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+           lcl_instrm: get_in(tx, ["LclInstrm", "Prtry"]),
+           purp_cd: get_in(tx, ["Purp", "Cd"]),
+           rmt_inf: get_in(tx, ["RmtInf", "Ustrd"]),
+           accptnc_dt_tm: get_in(tx, ["RltdDts", "AccptncDtTm"]) |> parse_datetime(),
+           rtr_rsn_cd: get_in(rtr_inf, ["Rsn", "Cd"]),
+           rtr_rsn_addtl_inf: rtr_inf["AddtlInf"],
+           addtl_tx_inf: tx["AddtlTxInf"]
+         }}
+
+      ntfctns ->
+        {:error, {:unsupported_batch, length(ntfctns)}}
+    end
   end
 
   defp format_datetime(%DateTime{} = dt) do

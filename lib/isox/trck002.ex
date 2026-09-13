@@ -80,15 +80,17 @@ defmodule Isox.Trck002 do
   @doc "Decodifica um XML de trck.002 de volta para a struct."
   @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
-    case Isox.Registry.decode(xml) do
-      {:ok, module, term} ->
-        case Map.fetch(@version_by_module, module) do
-          {:ok, version} -> {:ok, struct_from_term(term), version}
-          :error -> {:error, {:not_trck002, module.msg_def_idr()}}
-        end
+    with {:ok, module, term} <- Isox.Registry.decode(xml),
+         {:ok, version} <- version_for(module),
+         {:ok, message} <- struct_from_term(term) do
+      {:ok, message, version}
+    end
+  end
 
-      error ->
-        error
+  defp version_for(module) do
+    case Map.fetch(@version_by_module, module) do
+      {:ok, version} -> {:ok, version}
+      :error -> {:error, {:not_trck002, module.msg_def_idr()}}
     end
   end
 
@@ -140,34 +142,46 @@ defmodule Isox.Trck002 do
 
   defp agent_term(ispb), do: %{"FinInstnId" => %{"ClrSysMmbId" => %{"MmbId" => ispb}}}
 
+  # TrckrStsAndTx/Tx é `max: ilimitado` no schema; o modelo assume 1.
+  # `[tx] = ...` sem essa checagem crashava (MatchError) em vez de
+  # devolver erro caso o XSD permita — mesmo padrão achado com dado real
+  # em pacs.002/004/008 (ver essas mensagens), aplicado aqui por defesa
+  # mesmo sem exemplo oficial de lote pra trck.002 no catálogo atual.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "PmtStsTrckrRpt"])
     grp = doc["GrpHdr"]
-    [tx] = get_in(doc, ["TrckrStsAndTx", "Tx"])
-    dbtr_acct = tx["DbtrAcct"]
-    cdtr_acct = tx["CdtrAcct"]
 
-    %__MODULE__{
-      msg_id: grp["MsgId"],
-      created_at: parse_datetime(grp["CreDtTm"]),
-      end_to_end_id: get_in(tx, ["PmtId", "EndToEndId"]),
-      instr_id: get_in(tx, ["PmtId", "InstrId"]),
-      lcl_instrm: get_in(tx, ["PmtTpInf", "LclInstrm", "Prtry"]),
-      pmt_scnro_prtry: get_in(tx, ["PmtScnro", "Prtry"]),
-      value: get_in(tx, ["IntrBkSttlmAmt", :value]),
-      reqd_exctn_dt: get_in(tx, ["ReqdExctnDt", "DtTm"]) |> parse_datetime(),
-      dbtr_cpf_cnpj: get_in(tx, ["Dbtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
-      dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
-      dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
-      dbtr_acct_type: get_in(dbtr_acct, ["Tp", "Cd"]),
-      dbtr_agt_ispb: get_in(tx, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      cdtr_agt_ispb: get_in(tx, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      cdtr_cpf_cnpj: get_in(tx, ["Cdtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
-      cdtr_acct_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
-      cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
-      cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
-      cdtr_acct_proxy: get_in(cdtr_acct, ["Prxy", "Id"])
-    }
+    case get_in(doc, ["TrckrStsAndTx", "Tx"]) do
+      [tx] ->
+        dbtr_acct = tx["DbtrAcct"]
+        cdtr_acct = tx["CdtrAcct"]
+
+        {:ok,
+         %__MODULE__{
+           msg_id: grp["MsgId"],
+           created_at: parse_datetime(grp["CreDtTm"]),
+           end_to_end_id: get_in(tx, ["PmtId", "EndToEndId"]),
+           instr_id: get_in(tx, ["PmtId", "InstrId"]),
+           lcl_instrm: get_in(tx, ["PmtTpInf", "LclInstrm", "Prtry"]),
+           pmt_scnro_prtry: get_in(tx, ["PmtScnro", "Prtry"]),
+           value: get_in(tx, ["IntrBkSttlmAmt", :value]),
+           reqd_exctn_dt: get_in(tx, ["ReqdExctnDt", "DtTm"]) |> parse_datetime(),
+           dbtr_cpf_cnpj: get_in(tx, ["Dbtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
+           dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
+           dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
+           dbtr_acct_type: get_in(dbtr_acct, ["Tp", "Cd"]),
+           dbtr_agt_ispb: get_in(tx, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+           cdtr_agt_ispb: get_in(tx, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+           cdtr_cpf_cnpj: get_in(tx, ["Cdtr", "Pty", "Id", "PrvtId", "Othr", "Id"]),
+           cdtr_acct_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
+           cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
+           cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
+           cdtr_acct_proxy: get_in(cdtr_acct, ["Prxy", "Id"])
+         }}
+
+      txs ->
+        {:error, {:unsupported_batch, length(txs)}}
+    end
   end
 
   defp format_datetime(%DateTime{} = dt) do

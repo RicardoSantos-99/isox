@@ -53,15 +53,17 @@ defmodule Isox.Camt052 do
   @doc "Decodifica um XML de camt.052 de volta para a struct."
   @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
-    case Isox.Registry.decode(xml) do
-      {:ok, module, term} ->
-        case Map.fetch(@version_by_module, module) do
-          {:ok, version} -> {:ok, struct_from_term(term), version}
-          :error -> {:error, {:not_camt052, module.msg_def_idr()}}
-        end
+    with {:ok, module, term} <- Isox.Registry.decode(xml),
+         {:ok, version} <- version_for(module),
+         {:ok, message} <- struct_from_term(term) do
+      {:ok, message, version}
+    end
+  end
 
-      error ->
-        error
+  defp version_for(module) do
+    case Map.fetch(@version_by_module, module) do
+      {:ok, version} -> {:ok, version}
+      :error -> {:error, {:not_camt052, module.msg_def_idr()}}
     end
   end
 
@@ -96,18 +98,29 @@ defmodule Isox.Camt052 do
     }
   end
 
+  # Rpt é `max: ilimitado` no schema; o modelo assume 1. `[rpt] = ...` sem
+  # essa checagem crashava (MatchError) em vez de devolver erro caso o XSD
+  # permita — mesmo padrão achado com dado real em pacs.002/004/008 (ver
+  # essas mensagens), aplicado aqui por defesa mesmo sem exemplo oficial
+  # de lote pra camt.052 no catálogo atual.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "BkToCstmrAcctRpt"])
-    [rpt] = doc["Rpt"]
 
-    %__MODULE__{
-      msg_id: get_in(doc, ["GrpHdr", "MsgId"]),
-      created_at: parse_datetime(get_in(doc, ["GrpHdr", "CreDtTm"])),
-      rpt_id: rpt["Id"],
-      acct_ispb: get_in(rpt, ["Acct", "Id", "Othr", "Id"]),
-      nb_of_ntries: get_in(rpt, ["TxsSummry", "TtlNtries", "NbOfNtries"]),
-      addtl_rpt_inf: rpt["AddtlRptInf"]
-    }
+    case doc["Rpt"] do
+      [rpt] ->
+        {:ok,
+         %__MODULE__{
+           msg_id: get_in(doc, ["GrpHdr", "MsgId"]),
+           created_at: parse_datetime(get_in(doc, ["GrpHdr", "CreDtTm"])),
+           rpt_id: rpt["Id"],
+           acct_ispb: get_in(rpt, ["Acct", "Id", "Othr", "Id"]),
+           nb_of_ntries: get_in(rpt, ["TxsSummry", "TtlNtries", "NbOfNtries"]),
+           addtl_rpt_inf: rpt["AddtlRptInf"]
+         }}
+
+      rpts ->
+        {:error, {:unsupported_batch, length(rpts)}}
+    end
   end
 
   defp format_datetime(%DateTime{} = dt) do

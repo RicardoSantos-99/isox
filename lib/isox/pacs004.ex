@@ -80,15 +80,17 @@ defmodule Isox.Pacs004 do
   @doc "Decodifica um XML de pacs.004 de volta para a struct."
   @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
-    case Isox.Registry.decode(xml) do
-      {:ok, module, term} ->
-        case Map.fetch(@version_by_module, module) do
-          {:ok, version} -> {:ok, struct_from_term(term), version}
-          :error -> {:error, {:not_pacs004, module.msg_def_idr()}}
-        end
+    with {:ok, module, term} <- Isox.Registry.decode(xml),
+         {:ok, version} <- version_for(module),
+         {:ok, message} <- struct_from_term(term) do
+      {:ok, message, version}
+    end
+  end
 
-      error ->
-        error
+  defp version_for(module) do
+    case Map.fetch(@version_by_module, module) do
+      {:ok, version} -> {:ok, version}
+      :error -> {:error, {:not_pacs004, module.msg_def_idr()}}
     end
   end
 
@@ -146,26 +148,38 @@ defmodule Isox.Pacs004 do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
+  # TxInf é `max: ilimitado` no schema; o modelo assume 1. `[tx] = ...` sem
+  # essa checagem crashava (MatchError) em vez de devolver erro — o XSD
+  # permite lote (confirmado: pacs.004_SPI_10_msg.xml, exemplo real do
+  # BCB, vem com 10 transações), então decode/1 não pode quebrar por causa
+  # de uma forma de mensagem que o próprio catálogo permite.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "PmtRtr"])
     grp = doc["GrpHdr"]
-    [tx] = doc["TxInf"]
-    rsn_inf = tx["RtrRsnInf"]
-    orgnl_ref = tx["OrgnlTxRef"]
 
-    %__MODULE__{
-      msg_id: grp["MsgId"],
-      created_at: parse_datetime(grp["CreDtTm"]),
-      rtr_id: tx["RtrId"],
-      orgnl_end_to_end_id: tx["OrgnlEndToEndId"],
-      value: get_in(tx, ["RtrdIntrBkSttlmAmt", :value]),
-      sttlm_prty: tx["SttlmPrty"],
-      rtr_rsn_cd: get_in(rsn_inf, ["Rsn", "Cd"]),
-      rtr_rsn_addtl_inf: rsn_inf["AddtlInf"],
-      dbtr_agt_ispb: get_in(orgnl_ref, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      cdtr_agt_ispb: get_in(orgnl_ref, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      rmt_inf_ustrd: get_in(orgnl_ref, ["RmtInf", "Ustrd"])
-    }
+    case doc["TxInf"] do
+      [tx] ->
+        rsn_inf = tx["RtrRsnInf"]
+        orgnl_ref = tx["OrgnlTxRef"]
+
+        {:ok,
+         %__MODULE__{
+           msg_id: grp["MsgId"],
+           created_at: parse_datetime(grp["CreDtTm"]),
+           rtr_id: tx["RtrId"],
+           orgnl_end_to_end_id: tx["OrgnlEndToEndId"],
+           value: get_in(tx, ["RtrdIntrBkSttlmAmt", :value]),
+           sttlm_prty: tx["SttlmPrty"],
+           rtr_rsn_cd: get_in(rsn_inf, ["Rsn", "Cd"]),
+           rtr_rsn_addtl_inf: rsn_inf["AddtlInf"],
+           dbtr_agt_ispb: get_in(orgnl_ref, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+           cdtr_agt_ispb: get_in(orgnl_ref, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+           rmt_inf_ustrd: get_in(orgnl_ref, ["RmtInf", "Ustrd"])
+         }}
+
+      txs ->
+        {:error, {:unsupported_batch, length(txs)}}
+    end
   end
 
   defp format_datetime(%DateTime{} = dt) do

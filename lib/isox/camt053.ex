@@ -54,15 +54,17 @@ defmodule Isox.Camt053 do
   @doc "Decodifica um XML de camt.053 de volta para a struct."
   @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
-    case Isox.Registry.decode(xml) do
-      {:ok, module, term} ->
-        case Map.fetch(@version_by_module, module) do
-          {:ok, version} -> {:ok, struct_from_term(term), version}
-          :error -> {:error, {:not_camt053, module.msg_def_idr()}}
-        end
+    with {:ok, module, term} <- Isox.Registry.decode(xml),
+         {:ok, version} <- version_for(module),
+         {:ok, message} <- struct_from_term(term) do
+      {:ok, message, version}
+    end
+  end
 
-      error ->
-        error
+  defp version_for(module) do
+    case Map.fetch(@version_by_module, module) do
+      {:ok, version} -> {:ok, version}
+      :error -> {:error, {:not_camt053, module.msg_def_idr()}}
     end
   end
 
@@ -105,17 +107,28 @@ defmodule Isox.Camt053 do
     }
   end
 
+  # Stmt é `max: ilimitado` no schema; o modelo assume 1. `[stmt] = ...`
+  # sem essa checagem crashava (MatchError) em vez de devolver erro caso
+  # o XSD permita — mesmo padrão achado com dado real em pacs.002/004/008
+  # (ver essas mensagens), aplicado aqui por defesa mesmo sem exemplo
+  # oficial de lote pra camt.053 no catálogo atual.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "BkToCstmrStmt"])
-    [stmt] = doc["Stmt"]
 
-    %__MODULE__{
-      msg_id: get_in(doc, ["GrpHdr", "MsgId"]),
-      created_at: parse_datetime(get_in(doc, ["GrpHdr", "CreDtTm"])),
-      stmt_id: stmt["Id"],
-      acct_ispb: get_in(stmt, ["Acct", "Id", "Othr", "Id"]),
-      balances: stmt |> Map.get("Bal", []) |> Enum.map(&balance_from_term/1)
-    }
+    case doc["Stmt"] do
+      [stmt] ->
+        {:ok,
+         %__MODULE__{
+           msg_id: get_in(doc, ["GrpHdr", "MsgId"]),
+           created_at: parse_datetime(get_in(doc, ["GrpHdr", "CreDtTm"])),
+           stmt_id: stmt["Id"],
+           acct_ispb: get_in(stmt, ["Acct", "Id", "Othr", "Id"]),
+           balances: stmt |> Map.get("Bal", []) |> Enum.map(&balance_from_term/1)
+         }}
+
+      stmts ->
+        {:error, {:unsupported_batch, length(stmts)}}
+    end
   end
 
   defp balance_from_term(t) do

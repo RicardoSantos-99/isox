@@ -124,15 +124,17 @@ defmodule Isox.Pacs008 do
   @doc "Decodifica um XML de pacs.008 (qualquer versão) de volta para a struct."
   @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
-    case Isox.Registry.decode(xml) do
-      {:ok, module, term} ->
-        case Map.fetch(@version_by_module, module) do
-          {:ok, version} -> {:ok, struct_from_term(term), version}
-          :error -> {:error, {:not_pacs008, module.msg_def_idr()}}
-        end
+    with {:ok, module, term} <- Isox.Registry.decode(xml),
+         {:ok, version} <- version_for(module),
+         {:ok, message} <- struct_from_term(term) do
+      {:ok, message, version}
+    end
+  end
 
-      error ->
-        error
+  defp version_for(module) do
+    case Map.fetch(@version_by_module, module) do
+      {:ok, version} -> {:ok, version}
+      :error -> {:error, {:not_pacs008, module.msg_def_idr()}}
     end
   end
 
@@ -218,41 +220,54 @@ defmodule Isox.Pacs008 do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
+  # CdtTrfTxInf é `max: ilimitado` no schema; o modelo assume 1. `[tx] =
+  # ...` sem essa checagem crashava (MatchError) em vez de devolver erro —
+  # o XSD permite lote (confirmado: pacs.008_CONTA_10_msg.xml e
+  # pacs.008_END_10_msg.xml, exemplos reais do BCB, vêm com 10 transações
+  # cada), então decode/1 não pode quebrar por causa de uma forma de
+  # mensagem que o próprio catálogo permite.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "FIToFICstmrCdtTrf"])
     grp = doc["GrpHdr"]
-    [tx] = doc["CdtTrfTxInf"]
-    pmt_id = tx["PmtId"]
-    dbtr_acct = tx["DbtrAcct"]
-    cdtr_acct = tx["CdtrAcct"]
 
-    %__MODULE__{
-      msg_id: grp["MsgId"],
-      created_at: parse_datetime(grp["CreDtTm"]),
-      instr_prty: get_in(grp, ["PmtTpInf", "InstrPrty"]),
-      svc_lvl_prtry: get_in(grp, ["PmtTpInf", "SvcLvl", "Prtry"]),
-      end_to_end_id: pmt_id["EndToEndId"],
-      tx_id: pmt_id["TxId"],
-      instr_id: pmt_id["InstrId"],
-      value: get_in(tx, ["IntrBkSttlmAmt", :value]),
-      accptnc_dt_tm: parse_datetime(tx["AccptncDtTm"]),
-      lcl_instrm: get_in(tx, ["MndtRltdInf", "Tp", "LclInstrm", "Prtry"]),
-      initg_pty_id: get_in(tx, ["InitgPty", "Id", "OrgId", "Othr", "Id"]),
-      dbtr_name: get_in(tx, ["Dbtr", "Nm"]),
-      dbtr_cpf_cnpj: get_in(tx, ["Dbtr", "Id", "PrvtId", "Othr", "Id"]),
-      dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
-      dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
-      dbtr_acct_type: get_in(dbtr_acct, ["Tp", "Cd"]),
-      dbtr_agt_ispb: get_in(tx, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      cdtr_agt_ispb: get_in(tx, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      cdtr_cpf_cnpj: get_in(tx, ["Cdtr", "Id", "PrvtId", "Othr", "Id"]),
-      cdtr_acct_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
-      cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
-      cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
-      cdtr_acct_proxy: get_in(cdtr_acct, ["Prxy", "Id"]),
-      purp_cd: get_in(tx, ["Purp", "Cd"]),
-      rmt_inf: get_in(tx, ["RmtInf", "Ustrd"])
-    }
+    case doc["CdtTrfTxInf"] do
+      [tx] ->
+        pmt_id = tx["PmtId"]
+        dbtr_acct = tx["DbtrAcct"]
+        cdtr_acct = tx["CdtrAcct"]
+
+        {:ok,
+         %__MODULE__{
+           msg_id: grp["MsgId"],
+           created_at: parse_datetime(grp["CreDtTm"]),
+           instr_prty: get_in(grp, ["PmtTpInf", "InstrPrty"]),
+           svc_lvl_prtry: get_in(grp, ["PmtTpInf", "SvcLvl", "Prtry"]),
+           end_to_end_id: pmt_id["EndToEndId"],
+           tx_id: pmt_id["TxId"],
+           instr_id: pmt_id["InstrId"],
+           value: get_in(tx, ["IntrBkSttlmAmt", :value]),
+           accptnc_dt_tm: parse_datetime(tx["AccptncDtTm"]),
+           lcl_instrm: get_in(tx, ["MndtRltdInf", "Tp", "LclInstrm", "Prtry"]),
+           initg_pty_id: get_in(tx, ["InitgPty", "Id", "OrgId", "Othr", "Id"]),
+           dbtr_name: get_in(tx, ["Dbtr", "Nm"]),
+           dbtr_cpf_cnpj: get_in(tx, ["Dbtr", "Id", "PrvtId", "Othr", "Id"]),
+           dbtr_acct_id: get_in(dbtr_acct, ["Id", "Othr", "Id"]),
+           dbtr_acct_issr: get_in(dbtr_acct, ["Id", "Othr", "Issr"]),
+           dbtr_acct_type: get_in(dbtr_acct, ["Tp", "Cd"]),
+           dbtr_agt_ispb: get_in(tx, ["DbtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+           cdtr_agt_ispb: get_in(tx, ["CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+           cdtr_cpf_cnpj: get_in(tx, ["Cdtr", "Id", "PrvtId", "Othr", "Id"]),
+           cdtr_acct_id: get_in(cdtr_acct, ["Id", "Othr", "Id"]),
+           cdtr_acct_issr: get_in(cdtr_acct, ["Id", "Othr", "Issr"]),
+           cdtr_acct_type: get_in(cdtr_acct, ["Tp", "Cd"]),
+           cdtr_acct_proxy: get_in(cdtr_acct, ["Prxy", "Id"]),
+           purp_cd: get_in(tx, ["Purp", "Cd"]),
+           rmt_inf: get_in(tx, ["RmtInf", "Ustrd"])
+         }}
+
+      txs ->
+        {:error, {:unsupported_batch, length(txs)}}
+    end
   end
 
   defp format_datetime(%DateTime{} = dt) do

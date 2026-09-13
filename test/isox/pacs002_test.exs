@@ -82,4 +82,16 @@ defmodule Isox.Pacs002Test do
 
     assert {:error, _reason} = Pacs002.decode(outro_xml)
   end
+
+  # TxInfAndSts é `max: ilimitado` no XSD (confirmado com exemplo oficial
+  # do BCB: pacs.002_SPI_10_msg.xml vem com 10 transações numa mensagem
+  # só) — o modelo assume 1, mas decode/1 tem que errar limpo nesse caso,
+  # não crashar (MatchError), já que é uma forma de mensagem que o
+  # catálogo permite.
+  test "mensagem com mais de uma transação (lote) erra limpo, não crasha" do
+    {:ok, xml} = Pacs002.encode(@message, @header, :v1_17)
+    duplicada = String.replace(xml, ~r{(<TxInfAndSts>.*</TxInfAndSts>)}s, "\\1\\1")
+
+    assert {:error, {:unsupported_batch, 2}} = Pacs002.decode(duplicada)
+  end
 end

@@ -294,6 +294,23 @@ defmodule Isox.Xml.CodecTest do
     end
   end
 
+  # xs:date do catálogo nunca vem com pattern (ex.: OrgnlTxRef/IntrBkSttlmDt
+  # do pacs.002, <xs:restriction base="xs:date"/> vazio) — sem este check,
+  # um valor não-data passava reto pelo parse e só quebrava (raise não
+  # capturado) mais tarde, fora da zona protegida pelo rescue de parse/2,
+  # dentro do parse_date! de quem lê o termo (7 mensagens usam esse padrão).
+  test "validação: xs:date sem pattern ainda precisa ser uma data válida" do
+    schema = %Element{
+      tag: "E",
+      type: %ComplexType{content: [%Element{tag: "Dt", type: %SimpleType{base: "date"}}]}
+    }
+
+    assert {:ok, %{"Dt" => "2026-09-13"}} = Codec.parse(schema, "<E><Dt>2026-09-13</Dt></E>")
+
+    assert {:error, message} = Codec.parse(schema, "<E><Dt>data-invalida</Dt></E>")
+    assert message =~ "data válida"
+  end
+
   test "escapa e desescapa caracteres especiais em texto e atributo" do
     schema = %Element{
       tag: "E",

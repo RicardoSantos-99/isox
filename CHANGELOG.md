@@ -41,5 +41,20 @@ Primeira versão pública.
   reto pelo `encode/3` de qualquer mensagem com campo de valor (`Pacs008`,
   `Pacs004`, `Camt053`, `Camt054`, `Pain009/011/012/013`, `Trck002`, entre
   outras). Achado no deep dive de validação do catálogo (issue #49).
+- `xs:date` sem `pattern` no XSD (ex.: `OrgnlTxRef/IntrBkSttlmDt` do
+  `Pacs002`): um valor não-data crashava (`ArgumentError`) em vez de
+  devolver erro — o motor não validava `xs:date` de jeito nenhum quando
+  o XSD não declarava pattern, e o crash acontecia fora da zona
+  protegida do `parse/2`, direto em quem chama `decode/1`.
+- Elemento repetido (`max: ilimitado`) que o modelo assume como exatamente
+  1 (`TxInfAndSts` do `Pacs002`, `TxInf` do `Pacs004`, `CdtTrfTxInf` do
+  `Pacs008`, e outros 8: `Camt052/053/054`, `Pain009/012/013/014`,
+  `Trck002`): uma mensagem com mais de um item crashava (`MatchError`) em
+  vez de devolver erro — confirmado com exemplos oficiais do BCB que vêm
+  em lote (`pacs.002_SPI_10_msg.xml`, `pacs.004_SPI_10_msg.xml`,
+  `pacs.008_CONTA_10_msg.xml`, entre outros). `decode/1` agora devolve
+  `{:error, {:unsupported_batch, contagem}}` nesses 11 módulos — não
+  passou a suportar lote, só parou de crashar por causa dele. Achado no
+  deep dive de validação do catálogo (issue #47, pacs.002).
 
 [0.1.0]: https://github.com/RicardoSantos-99/isox/releases/tag/v0.1.0

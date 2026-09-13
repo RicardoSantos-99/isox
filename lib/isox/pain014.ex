@@ -77,15 +77,17 @@ defmodule Isox.Pain014 do
   @doc "Decodifica um XML de pain.014 de volta para a struct."
   @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
-    case Isox.Registry.decode(xml) do
-      {:ok, module, term} ->
-        case Map.fetch(@version_by_module, module) do
-          {:ok, version} -> {:ok, struct_from_term(term), version}
-          :error -> {:error, {:not_pain014, module.msg_def_idr()}}
-        end
+    with {:ok, module, term} <- Isox.Registry.decode(xml),
+         {:ok, version} <- version_for(module),
+         {:ok, message} <- struct_from_term(term) do
+      {:ok, message, version}
+    end
+  end
 
-      error ->
-        error
+  defp version_for(module) do
+    case Map.fetch(@version_by_module, module) do
+      {:ok, version} -> {:ok, version}
+      :error -> {:error, {:not_pain014, module.msg_def_idr()}}
     end
   end
 
@@ -146,23 +148,36 @@ defmodule Isox.Pain014 do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
+  # OrgnlPmtInfAndSts é `max: ilimitado` no schema; o modelo assume 1.
+  # `[orgnl] = ...` sem essa checagem crashava (MatchError) em vez de
+  # devolver erro caso o XSD permita — mesmo padrão achado com dado real
+  # em pacs.002/004/008 (ver essas mensagens), aplicado aqui por defesa
+  # mesmo sem exemplo oficial de lote pra pain.014 no catálogo atual.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "CdtrPmtActvtnReqStsRpt"])
     grp = doc["GrpHdr"]
-    [orgnl] = doc["OrgnlPmtInfAndSts"]
-    tx = orgnl["TxInfAndSts"]
 
-    %__MODULE__{
-      msg_id: grp["MsgId"],
-      created_at: parse_datetime(grp["CreDtTm"]),
-      orgnl_pmt_inf_id: orgnl["OrgnlPmtInfId"],
-      orgnl_end_to_end_id: tx["OrgnlEndToEndId"],
-      tx_sts: tx["TxSts"],
-      rsn_prtry: get_in(tx, ["StsRsnInf", "Rsn", "Prtry"]),
-      dbtr_dcsn_dt_tm: parse_datetime(tx["DbtrDcsnDtTm"]),
-      cdtr_agt_ispb: get_in(tx, ["OrgnlTxRef", "CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
-      cdtr_cpf_cnpj: get_in(tx, ["OrgnlTxRef", "Cdtr", "Id", "PrvtId", "Othr", "Id"])
-    }
+    case doc["OrgnlPmtInfAndSts"] do
+      [orgnl] ->
+        tx = orgnl["TxInfAndSts"]
+
+        {:ok,
+         %__MODULE__{
+           msg_id: grp["MsgId"],
+           created_at: parse_datetime(grp["CreDtTm"]),
+           orgnl_pmt_inf_id: orgnl["OrgnlPmtInfId"],
+           orgnl_end_to_end_id: tx["OrgnlEndToEndId"],
+           tx_sts: tx["TxSts"],
+           rsn_prtry: get_in(tx, ["StsRsnInf", "Rsn", "Prtry"]),
+           dbtr_dcsn_dt_tm: parse_datetime(tx["DbtrDcsnDtTm"]),
+           cdtr_agt_ispb:
+             get_in(tx, ["OrgnlTxRef", "CdtrAgt", "FinInstnId", "ClrSysMmbId", "MmbId"]),
+           cdtr_cpf_cnpj: get_in(tx, ["OrgnlTxRef", "Cdtr", "Id", "PrvtId", "Othr", "Id"])
+         }}
+
+      orgnls ->
+        {:error, {:unsupported_batch, length(orgnls)}}
+    end
   end
 
   defp format_datetime(%DateTime{} = dt) do

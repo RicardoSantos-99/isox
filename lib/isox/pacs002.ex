@@ -76,15 +76,17 @@ defmodule Isox.Pacs002 do
   @doc "Decodifica um XML de pacs.002 (qualquer versão) de volta para a struct."
   @spec decode(binary()) :: {:ok, t(), version()} | {:error, term()}
   def decode(xml) when is_binary(xml) do
-    case Isox.Registry.decode(xml) do
-      {:ok, module, term} ->
-        case Map.fetch(@version_by_module, module) do
-          {:ok, version} -> {:ok, struct_from_term(term), version}
-          :error -> {:error, {:not_pacs002, module.msg_def_idr()}}
-        end
+    with {:ok, module, term} <- Isox.Registry.decode(xml),
+         {:ok, version} <- version_for(module),
+         {:ok, message} <- struct_from_term(term) do
+      {:ok, message, version}
+    end
+  end
 
-      error ->
-        error
+  defp version_for(module) do
+    case Map.fetch(@version_by_module, module) do
+      {:ok, version} -> {:ok, version}
+      :error -> {:error, {:not_pacs002, module.msg_def_idr()}}
     end
   end
 
@@ -143,23 +145,36 @@ defmodule Isox.Pacs002 do
   defp maybe_put(map, _key, nil), do: map
   defp maybe_put(map, key, value), do: Map.put(map, key, value)
 
+  # TxInfAndSts é `max: ilimitado` no schema (o XSD permite lote — e o
+  # catálogo oficial documenta isso: pacs.002_SPI_10_msg.xml, exemplo real
+  # do BCB, vem com 10 transações numa mensagem só). O modelo assume 1;
+  # `[tx] = ...` sem essa checagem explícita crashava (MatchError) com
+  # esse exato exemplo em vez de devolver erro — decode/1 nunca deveria
+  # quebrar por causa de uma forma de mensagem que o XSD permite.
   defp struct_from_term(term) do
     doc = get_in(term, ["Document", "FIToFIPmtStsRpt"])
     grp = doc["GrpHdr"]
-    [tx] = doc["TxInfAndSts"]
-    rsn_inf = tx |> Map.get("StsRsnInf", []) |> List.first(%{})
 
-    %__MODULE__{
-      msg_id: grp["MsgId"],
-      created_at: parse_datetime(grp["CreDtTm"]),
-      orgnl_instr_id: tx["OrgnlInstrId"],
-      orgnl_end_to_end_id: tx["OrgnlEndToEndId"],
-      tx_sts: tx["TxSts"],
-      sts_rsn_cd: get_in(rsn_inf, ["Rsn", "Cd"]),
-      sts_rsn_addtl_inf: Map.get(rsn_inf, "AddtlInf", []),
-      fctv_intr_bk_sttlm_dt: parse_datetime(get_in(tx, ["FctvIntrBkSttlmDt", "DtTm"])),
-      orgnl_intr_bk_sttlm_dt: parse_date(get_in(tx, ["OrgnlTxRef", "IntrBkSttlmDt"]))
-    }
+    case doc["TxInfAndSts"] do
+      [tx] ->
+        rsn_inf = tx |> Map.get("StsRsnInf", []) |> List.first(%{})
+
+        {:ok,
+         %__MODULE__{
+           msg_id: grp["MsgId"],
+           created_at: parse_datetime(grp["CreDtTm"]),
+           orgnl_instr_id: tx["OrgnlInstrId"],
+           orgnl_end_to_end_id: tx["OrgnlEndToEndId"],
+           tx_sts: tx["TxSts"],
+           sts_rsn_cd: get_in(rsn_inf, ["Rsn", "Cd"]),
+           sts_rsn_addtl_inf: Map.get(rsn_inf, "AddtlInf", []),
+           fctv_intr_bk_sttlm_dt: parse_datetime(get_in(tx, ["FctvIntrBkSttlmDt", "DtTm"])),
+           orgnl_intr_bk_sttlm_dt: parse_date(get_in(tx, ["OrgnlTxRef", "IntrBkSttlmDt"]))
+         }}
+
+      txs ->
+        {:error, {:unsupported_batch, length(txs)}}
+    end
   end
 
   defp format_datetime(%DateTime{} = dt) do
