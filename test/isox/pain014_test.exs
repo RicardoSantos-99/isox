@@ -57,4 +57,18 @@ defmodule Isox.Pain014Test do
 
     assert {:error, _reason} = Pain014.decode(outro_xml)
   end
+
+  test "ACSP com rsn_prtry preenchido é rejeitado" do
+    message = %{@message | tx_sts: "ACSP", rsn_prtry: "AC05"}
+
+    assert {:error, reason} = Pain014.encode(message, @header, :v2_4)
+    assert reason =~ "rsn_prtry"
+  end
+
+  test "RJCT sem rsn_prtry é rejeitado" do
+    message = %{@message | tx_sts: "RJCT", rsn_prtry: nil}
+
+    assert {:error, reason} = Pain014.encode(message, @header, :v2_4)
+    assert reason =~ "rsn_prtry"
+  end
 end

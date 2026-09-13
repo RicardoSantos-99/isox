@@ -43,6 +43,15 @@ Primeira versão pública.
 
 ### Corrigido
 
+- `Pain014`: nada validava a regra cruzada da planilha do catálogo
+  entre `tx_sts` e `rsn_prtry` — dava pra montar um `ACSP` (aceite) com
+  motivo sobrando, ou um `RJCT` (rejeição) sem motivo nenhum, sem erro
+  algum. `encode/3` agora valida: `ACSP` exige `rsn_prtry` ausente,
+  `RJCT` exige `rsn_prtry` presente — confirmado pelos 4 exemplos
+  oficiais do BCB (2 por versão do catálogo). Achado no deep dive de
+  validação do catálogo (issue #54, pain.014).
+
+
 - `Pain013`: o bloco `Tax` (divisão de tributos IBS/CBS — Split Payment
   da reforma tributária) era completamente ignorado — `decode/1`
   descartava silenciosamente os dados de tributo de qualquer XML real

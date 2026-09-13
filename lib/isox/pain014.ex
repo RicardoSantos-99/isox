@@ -16,6 +16,10 @@ defmodule Isox.Pain014 do
   `OrgnlMsgNmId` com 8 zeros) são valores fixos no perfil do BCB, não
   campos variáveis — a correlação de verdade acontece em
   `OrgnlPmtInfAndSts`, não no grupo.
+
+  `StsRsnInf`/`rsn_prtry` é condicional a `tx_sts`, regra da planilha do
+  catálogo (BCB): obrigatório quando `"RJCT"`, proibido quando `"ACSP"`
+  — confirmado nos 4 exemplos oficiais. `encode/3` valida isso.
   """
 
   alias Isox.AppHdr
@@ -78,6 +82,7 @@ defmodule Isox.Pain014 do
   def encode([%__MODULE__{} | _] = messages, %AppHdr{} = header, version)
       when version in [:v2_3, :v2_4] do
     with :ok <- validate_all_required(messages),
+         :ok <- validate_all_status_consistency(messages),
          :ok <- validate_shared_header(messages) do
       module = Map.fetch!(@module_by_version, version)
       [first | _] = messages
@@ -137,6 +142,25 @@ defmodule Isox.Pain014 do
       do: :ok,
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
+
+  defp validate_all_status_consistency(messages) do
+    Enum.reduce_while(messages, :ok, fn message, :ok ->
+      case validate_status_consistency(message) do
+        :ok -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_status_consistency(%{tx_sts: "ACSP", rsn_prtry: rsn}) when not is_nil(rsn) do
+    {:error, "rsn_prtry não deve ser preenchido quando tx_sts = \"ACSP\""}
+  end
+
+  defp validate_status_consistency(%{tx_sts: "RJCT", rsn_prtry: nil}) do
+    {:error, "rsn_prtry é obrigatório quando tx_sts = \"RJCT\""}
+  end
+
+  defp validate_status_consistency(_message), do: :ok
 
   defp validate_shared_header([_single]), do: :ok
 
