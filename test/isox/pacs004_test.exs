@@ -71,4 +71,16 @@ defmodule Isox.Pacs004Test do
 
     assert {:error, _reason} = Pacs004.decode(outro_xml)
   end
+
+  # TxInf é `max: ilimitado` no XSD (confirmado com exemplo oficial do
+  # BCB: pacs.004_SPI_10_msg.xml vem com 10 transações numa mensagem só)
+  # — o modelo assume 1, mas decode/1 tem que errar limpo nesse caso, não
+  # crashar (MatchError), já que é uma forma de mensagem que o catálogo
+  # permite.
+  test "mensagem com mais de uma transação (lote) erra limpo, não crasha" do
+    {:ok, xml} = Pacs004.encode(@message, @header, :v1_5)
+    duplicada = String.replace(xml, ~r{(<TxInf>.*</TxInf>)}s, "\\1\\1")
+
+    assert {:error, {:unsupported_batch, 2}} = Pacs004.decode(duplicada)
+  end
 end
