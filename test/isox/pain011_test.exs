@@ -53,6 +53,31 @@ defmodule Isox.Pain011Test do
     assert de_volta.mndt_prcg_dtls == message.mndt_prcg_dtls
   end
 
+  # SplmtryData é opcional como um todo, mas MndtPrcgDtls dentro dele é
+  # minOccurs="2" maxOccurs="2" — exatamente 2 quando presente, não
+  # "pelo menos 1". Os 2 exemplos oficiais do BCB confirmam sempre 2.
+  test "1 ou 3 itens em mndt_prcg_dtls é rejeitado (schema real exige exatamente 2)" do
+    com_1 = %{@message | mndt_prcg_dtls: [%{tp: "CRTN", dt_tm: @agora}]}
+    assert {:error, _reason} = Pain011.encode(com_1, @header, :v1_3)
+
+    com_3 = %{
+      @message
+      | mndt_prcg_dtls: [
+          %{tp: "CRTN", dt_tm: @agora},
+          %{tp: "CLTN", dt_tm: @agora},
+          %{tp: "CRTN", dt_tm: @agora}
+        ]
+    }
+
+    assert {:error, _reason} = Pain011.encode(com_3, @header, :v1_3)
+  end
+
+  test "orgnl_trckg_ind fora do léxico xs:boolean é rejeitado" do
+    message = %{@message | orgnl_trckg_ind: "sim"}
+    assert {:error, reason} = Pain011.encode(message, @header, :v1_3)
+    assert reason =~ "boolean válido"
+  end
+
   test "campo obrigatório ausente é rejeitado antes de montar XML" do
     message = %{@message | orgnl_mndt_id: nil}
     assert {:error, reason} = Pain011.encode(message, @header, :v1_3)
