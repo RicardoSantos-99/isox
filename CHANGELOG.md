@@ -43,6 +43,17 @@ Primeira versão pública.
 
 ### Corrigido
 
+- `Reda041`: a moduledoc dizia que `Rcrd.Othr` era `max: ilimitado`,
+  mas o schema real da BCB limita a `[1..3]` (`maxOccurs="3"`, sem
+  `minOccurs` declarado — `1` implícito), consistente com só existirem
+  3 códigos possíveis de campo alterado (`FldNm`: `MODP`/`NOME`/`NOMR`)
+  na tabela de domínios. O comportamento em si já estava certo — o
+  motor (fix da issue #50) já rejeita 0 ou mais de 3 alterações via
+  `confirm/2` — só a documentação estava errada. Reforçada cobertura de
+  teste pros dois limites. Achado no deep dive de validação do catálogo
+  (issue #62, reda.041).
+
+
 - `Reda022`: a moduledoc dizia que `Mod` era `max: ilimitado`, mas o
   schema real da BCB exige exatamente 4 (`minOccurs="4"
   maxOccurs="4"`) — sempre as 4 modificações juntas (contato, diretor,
