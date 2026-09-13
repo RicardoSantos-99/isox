@@ -4,6 +4,13 @@ defmodule Isox.Camt055 do
   agendada — Pix Agendado), versão 1.1. Referencia a ordem agendada por
   `OrgnlEndToEndId` e traz motivo (`CxlRsnInf`). Todo campo do schema
   real é obrigatório.
+
+  `cxl_prcg_tp` (`CxlPrcgTp`) depende de qual lado está solicitando o
+  cancelamento — regra da planilha do catálogo, não verificável só com
+  os campos desta mensagem (`assgnr_ispb` não diz por si só se é o
+  participante do pagador ou do recebedor): `"DHIP"` quando quem
+  solicita é o participante do usuário pagador, `"DHSR"` quando é o do
+  usuário recebedor. Cabe a quem chama `encode/3` escolher certo.
   """
 
   alias Isox.AppHdr
