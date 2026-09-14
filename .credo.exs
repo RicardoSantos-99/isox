@@ -10,7 +10,7 @@
       checks: %{
         disabled: [
           # "Todos", "Todas", "método" etc. disparam esse check em qualquer
-          # comentário em português — falso positivo sistêmico, não pontual.
+          # comentário em português: falso positivo sistêmico, não pontual.
           {Credo.Check.Design.TagTODO, []}
         ]
       }

@@ -13,7 +13,7 @@ defmodule Isox.EstiloTest do
 
   @arquivos Path.wildcard("lib/**/*.ex") ++
               Path.wildcard("test/**/*.exs") ++
-              ["README.md", "CHANGELOG.md", "AGENTS.md", "SECURITY.md", "mix.exs"]
+              ["README.md", "CHANGELOG.md", "AGENTS.md", "SECURITY.md", "mix.exs", ".credo.exs"]
 
   test "nenhum travessão em código, documentação ou changelog" do
     com_travessao =
