@@ -1,17 +1,25 @@
 defmodule Isox.Reda016 do
   @moduledoc """
-  Modelo ISO 20022 do reda.016 (aviso de status — resposta a
-  reda.014/022/031), versão 1.5. Correlaciona com o pedido original por
-  `OrgnlBizInstr.MsgId`.
+  Resposta a um pedido de cadastro: o desfecho de uma `Isox.Reda014`,
+  `Isox.Reda022` ou `Isox.Reda031`.
 
-  `sts` tem 3 valores possíveis (`Status6Code`): `"COMP"` (sucesso),
-  `"QUED"` (fila/pendência) e `"REJT"` (rejeição) — confirmado pelos 3
-  exemplos oficiais do BCB. `rsn_prtry`/`StsRsn` é obrigatório em
-  `"QUED"`/`"REJT"` e proibido em `"COMP"`; `sys_pty_ispb`/`SysPtyId` é
-  o inverso — obrigatório em `"COMP"` (regra explícita da planilha do
-  catálogo) e proibido em `"QUED"`/`"REJT"`. `rspnsbl_pty_ispb` só faz
-  sentido dentro de `SysPtyId`, ou seja, exige `sys_pty_ispb`.
-  `encode/3` valida tudo isso.
+  Versão 1.5. A correlação com o pedido é por `orgnl_msg_id`.
+
+  `sts` tem três valores, confirmados pelos três exemplos oficiais do BCB.
+  O do meio é o que costuma surpreender: `"QUED"` não é erro, é o pedido
+  de registro de um indireto que já tem liquidante. O liquidante atual
+  ganha 24 horas para confirmar o fim do relacionamento, e o prazo vem na
+  `Isox.Reda017`.
+
+  ## Regra cruzada que o XSD não expressa
+
+  `rsn_prtry` é obrigatório em `"QUED"` e `"REJT"`, proibido em `"COMP"`.
+  `sys_pty_ispb` é o inverso: obrigatório em `"COMP"`, proibido nos outros
+  dois. Faz sentido, porque só o pedido que deu certo tem participante
+  para apontar. `rspnsbl_pty_ispb` mora dentro do bloco de `sys_pty_ispb`,
+  então não existe sem ele. `encode/3` valida tudo isso.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

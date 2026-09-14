@@ -62,7 +62,7 @@ defmodule Isox.Xml.CodecTest do
   end
 
   # maxOccurs numérico > 1 (ex.: MndtPrcgDtls do pain.009, minOccurs="3"
-  # maxOccurs="3") — extract_item só checava o mínimo, nunca o máximo, tanto
+  # maxOccurs="3"): extract_item só checava o mínimo, nunca o máximo, tanto
   # pra max: 1 (checado numa cláusula à parte) quanto pra qualquer valor
   # finito > 1: um valor acima do permitido passava reto pelo parse.
   test "elemento repetido com maxOccurs numérico (não ilimitado) rejeita excesso" do
@@ -108,7 +108,7 @@ defmodule Isox.Xml.CodecTest do
 
   describe "choice com xs:group ref= (opção = grupo de vários elementos)" do
     # Mesmo formato do reda.022 real (ReqdModContatoChoice): duas opções de
-    # grupo com tags em comum — só um campo distingue qual ramo é.
+    # grupo com tags em comum: só um campo distingue qual ramo é.
     @schema %Element{
       tag: "CtctDtls",
       type: %ComplexType{
@@ -249,7 +249,7 @@ defmodule Isox.Xml.CodecTest do
   end
 
   # ActiveCurrencyAndAmount_SimpleType do catálogo (fractionDigits 2,
-  # totalDigits 18, minInclusive 0) — antes desses 4 campos existirem no
+  # totalDigits 18, minInclusive 0). Antes desses 4 campos existirem no
   # SimpleType, um valor monetário negativo, com casas decimais demais, ou
   # nem sequer numérico passava reto pelo parse: pattern/enum/tamanho não
   # cobrem faixa numérica.
@@ -319,7 +319,7 @@ defmodule Isox.Xml.CodecTest do
   end
 
   # xs:date do catálogo nunca vem com pattern (ex.: OrgnlTxRef/IntrBkSttlmDt
-  # do pacs.002, <xs:restriction base="xs:date"/> vazio) — sem este check,
+  # do pacs.002, <xs:restriction base="xs:date"/> vazio). Sem este check,
   # um valor não-data passava reto pelo parse e só quebrava (raise não
   # capturado) mais tarde, fora da zona protegida pelo rescue de parse/2,
   # dentro do parse_date! de quem lê o termo (7 mensagens usam esse padrão).
@@ -336,7 +336,7 @@ defmodule Isox.Xml.CodecTest do
   end
 
   # xs:boolean do catálogo nunca vem com pattern (ex.: TrckgInd do
-  # pain.009/011/012, <xs:restriction base="xs:boolean"/> vazio) — mesma
+  # pain.009/011/012, <xs:restriction base="xs:boolean"/> vazio). Mesma
   # situação do xs:date acima: sem este check, qualquer string passava reto
   # como se fosse um boolean válido, inclusive no build (XML inválido
   # montado sem erro nenhum). true/false/1/0 são as 4 representações
@@ -353,7 +353,7 @@ defmodule Isox.Xml.CodecTest do
     assert {:error, message} = Codec.parse(schema, "<E><Ind>talvez</Ind></E>")
     assert message =~ "boolean válido"
 
-    # build (diferente de parse) confia no termo que recebe — não valida;
+    # build (diferente de parse) confia no termo que recebe e não valida;
     # é o round-trip de confirm/2, que reparseia o XML montado, que barra
     # um valor inválido antes de sair do domain wrapper.
     assert {:ok, xml} = Codec.build(schema, %{"Ind" => "talvez"})

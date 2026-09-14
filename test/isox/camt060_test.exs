@@ -47,7 +47,7 @@ defmodule Isox.Camt060Test do
   end
 
   # FrToTm é independentemente opcional dentro de RptgPrd (schema real:
-  # minOccurs="0" nele, separado de FrToDt) — usado só pra consulta de
+  # minOccurs="0" nele, separado de FrToDt), usado só pra consulta de
   # relação de lançamentos. Saldo de dia anterior, remuneração da Conta
   # PI e arquivos TRD/TRT pedem só data, sem horário nenhum. Confirmado
   # pelos exemplos oficiais do BCB (camt.060_SALDO_DATA_ANTERIOR,

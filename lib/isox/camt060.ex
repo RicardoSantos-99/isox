@@ -1,23 +1,26 @@
 defmodule Isox.Camt060 do
   @moduledoc """
-  Modelo ISO 20022 do camt.060 (requisição de relatório da Conta
-  PI), versão 1.9 — `ReqdMsgNmId` é o campo despachante: decide se a
-  resposta é camt.052, camt.053 ou camt.054.
+  Consulta à Conta PI: saldo, extrato, relação de lançamentos ou detalhe
+  de um lançamento.
 
-  `RptgPrd` (período do relatório) é opcional como um todo; `Tp` é fixo
-  em `"ALLL"` (não é campo do modelo). O modelo usa `rptg_prd_fr_dt`
-  como sinal de presença do período inteiro (`FrToDt`, com `FrDt`
-  obrigatório e `ToDt` opcional).
+  Versão 1.9. `reqd_msg_nm_id` é o campo que despacha: ele decide se a
+  resposta volta como `Isox.Camt052`, `Isox.Camt053` ou `Isox.Camt054`.
+  Junto com `reqd_bal_tp_prtry`, forma a pergunta completa.
 
-  `FrToTm` (`rptg_prd_fr_tm`/`rptg_prd_to_tm`) é **independentemente
-  opcional** dentro de `RptgPrd` — não é sempre exigido junto de
-  `FrToDt`, como uma versão anterior deste moduledoc dizia por engano.
-  A planilha do catálogo é explícita: `FrToTm` só é usado em
-  "relação de lançamentos" (consulta de camt.054); consultas de saldo
-  de dia anterior, de remuneração da Conta PI, ou de arquivo `TRD`/`TRT`
-  usam só `FrToDt`, sem horário — confirmado pelos exemplos oficiais
+  ## O período
+
+  `RptgPrd` é opcional inteiro, e `rptg_prd_fr_dt` funciona como sinal de
+  presença dele. `Tp` é fixo em `"ALLL"` e não vira campo.
+
+  O horário (`rptg_prd_fr_tm` e `rptg_prd_to_tm`) é opcional por conta
+  própria dentro do período, não exigido junto com as datas. A planilha é
+  explícita: horário só entra na relação de lançamentos. Consulta de saldo
+  de dia anterior, de remuneração da Conta PI e de arquivo `TRD` ou `TRT`
+  usam só data. Os exemplos oficiais confirmam
   (`camt.060_SALDO_DATA_ANTERIOR`, `_SOLIC_REMUNERACAO_CONTA_PI`,
   `_SOLIC_ARQUIVO_TRD`, todos com `RptgPrd` sem `FrToTm`).
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -105,7 +108,7 @@ defmodule Isox.Camt060 do
   end
 
   # FrTm/ToTm são obrigatórios juntos dentro de FrToTm no schema real
-  # (nenhum dos dois tem minOccurs="0") — mas FrToTm inteiro é opcional
+  # (nenhum dos dois tem minOccurs="0"), mas FrToTm inteiro é opcional
   # dentro de RptgPrd. rptg_prd_fr_tm e rptg_prd_to_tm têm que vir os
   # dois ou nenhum dos dois.
   defp validate_rptg_prd_tm(%{rptg_prd_fr_tm: nil, rptg_prd_to_tm: nil}), do: :ok

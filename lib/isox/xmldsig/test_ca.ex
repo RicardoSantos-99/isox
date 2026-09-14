@@ -7,7 +7,7 @@ defmodule Isox.Xmldsig.TestCA do
   **Nunca use em produção.** Nada aqui é persistido: cada chamada gera um
   par novo, descartado ao final do processo. Um serviço real precisa de
   uma cadeia de certificados emitida por uma CA de verdade (ou pela ICP
-  interna do participante), com rotação e armazenamento próprios — fora
+  interna do participante), com rotação e armazenamento próprios, fora
   do escopo desta biblioteca.
   """
 
@@ -20,7 +20,7 @@ defmodule Isox.Xmldsig.TestCA do
   @spec generate() :: ca()
   def generate do
     private_key = :public_key.generate_key({:rsa, 2048, 65_537})
-    # ~c"Teste", não "Teste" — :public_key espera string() erlang (charlist),
+    # ~c"Teste", não "Teste": :public_key espera string() erlang (charlist),
     # não um binary Elixir; achado pelo dialyzer (invalid_contract).
     %{cert: certificate_der} = :public_key.pkix_test_root_cert(~c"Teste", key: private_key)
 

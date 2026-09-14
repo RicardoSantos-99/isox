@@ -1,23 +1,36 @@
 defmodule Isox.Reda022 do
   @moduledoc """
-  Modelo ISO 20022 do reda.022 (solicitação de alteração de
-  cadastro de participante), versão 1.4 — a mensagem cujo schema real
-  exigiu corrigir o `Compiler` (ver ADR/issue #27): `ReqdMod` é um
-  `xs:choice` entre `CtctDtls` (ela mesma outra escolha, entre os grupos
-  `ReqdModContato` e `ReqdModDiretor`, que compartilham a maioria das
-  tags — só `Nm` distingue), `TechAdr` e `MktSpcfcAttr`.
+  Alteração do cadastro de um participante direto: contatos, diretor
+  responsável, palavra-chave e CPF do diretor.
 
-  `Mod` é `[4..4]` no schema real (exatamente 4, não `ilimitado`) —
-  sempre as 4 modificações juntas, uma de cada tipo (`:contact`,
+  Versão 1.4. A resposta é uma `Isox.Reda016`. O `ispb` tem que ser o
+  próprio remetente: mexer no cadastro de outra instituição volta com
+  `ATC7`.
+
+  ## O pacote é sempre inteiro
+
+  `Mod` é `[4..4]` no schema real, exatamente quatro, não ilimitado.
+  Sempre as quatro modificações juntas, uma de cada tipo (`:contact`,
   `:director`, `:tech_adr`, `:mkt_spcfc_attr`), nunca um subconjunto.
-  Modelado como lista de mapas com `:type` dizendo qual variante de
-  `ReqdMod` é. `ScpIndctn` (enum de valor único `"INSE"`) e
-  `MktSpcfcAttr.Nm` (enum de valor único `"CPFDIRETOR"`) ficam fixos.
-  `Rspnsblty` também é fixo por tipo (`"CONTATOPSP"` em `:contact`,
-  `"DIRETORPSP"` em `:director`) — o schema só garante que é um dos 2
-  valores do enum, não que é o valor certo pro ramo; `encode/3` valida
-  isso, junto com a composição exata de `mod` (4 itens, um de cada
-  tipo).
+  Aqui isso é lista de mapas com `:type` dizendo qual variante é.
+
+  `ScpIndctn` (`"INSE"`) e `MktSpcfcAttr.Nm` (`"CPFDIRETOR"`) têm valor
+  único e ficam fixos.
+
+  ## O schema que obrigou a corrigir o compilador
+
+  Esta foi a mensagem que expôs um furo no `Compiler` (issue #27).
+  `ReqdMod` é um `xs:choice` entre `CtctDtls`, que por sua vez é outra
+  escolha entre `ReqdModContato` e `ReqdModDiretor`, `TechAdr` e
+  `MktSpcfcAttr`. Os dois grupos de `CtctDtls` compartilham quase todas as
+  tags: só `Nm` distingue um do outro.
+
+  `Rspnsblty` também é fixo por variante (`"CONTATOPSP"` em `:contact`,
+  `"DIRETORPSP"` em `:director`). O schema só garante que é um dos dois
+  valores do enum, não que é o valor certo para o ramo, então quem valida
+  isso é o `encode/3`, junto com a composição exata de `mod`.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

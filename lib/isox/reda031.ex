@@ -1,8 +1,14 @@
 defmodule Isox.Reda031 do
   @moduledoc """
-  Modelo ISO 20022 do reda.031 (solicitação de exclusão de
-  cadastro de participante), versão 1.2 — referencia o ISPB do
-  participante a excluir.
+  Pedido de encerramento do serviço de liquidação para um participante
+  indireto.
+
+  Versão 1.2. A resposta é uma `Isox.Reda016`.
+
+  Aqui `ispb` é o do participante indireto para quem o serviço vai acabar,
+  o contrário da `Isox.Reda014`, onde o ISPB é o de quem pede.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

@@ -54,7 +54,7 @@ defmodule Isox.Pain011Test do
   end
 
   # SplmtryData é opcional como um todo, mas MndtPrcgDtls dentro dele é
-  # minOccurs="2" maxOccurs="2" — exatamente 2 quando presente, não
+  # minOccurs="2" maxOccurs="2": exatamente 2 quando presente, não
   # "pelo menos 1". Os 2 exemplos oficiais do BCB confirmam sempre 2.
   test "1 ou 3 itens em mndt_prcg_dtls é rejeitado (schema real exige exatamente 2)" do
     com_1 = %{@message | mndt_prcg_dtls: [%{tp: "CRTN", dt_tm: @agora}]}

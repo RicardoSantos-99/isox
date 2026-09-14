@@ -6,17 +6,18 @@ defmodule Mix.Tasks.Xmldsig.Spike do
   servidor HTTP no caminho:
 
     1. montar e assinar uma pacs.008 pelo caminho de template canônico
-       (sem canonicalização no caminho quente — ver `Isox.Xmldsig.Signer`)
+       (sem canonicalização no caminho quente, ver `Isox.Xmldsig.Signer`)
     2. parsear e verificar a assinatura de uma pacs.008 de entrada, com
        canonicalização real (não dá pra confiar que os bytes de terceiro
        já chegam canônicos)
     3. canonicalização isolada (o trecho caro e bem delimitado, candidato
        a NIF/Rustler caso o throughput medido não seja suficiente)
 
-  Throughput por core: mede sequencial num processo só, sem paralelizar —
+  Throughput por core: mede sequencial num processo só, sem paralelizar,
   o número é o que um core sustenta; multiplicar por cores disponíveis dá
   uma estimativa grosseira do total. **Não fixa meta**: o número aceitável
-  depende de onde e como esta lib for usada — cabe a quem integra decidir
+  porque depende de onde e como esta lib for usada. Cabe a quem integra
+  decidir
   isso com os números medidos na mão, não a esta biblioteca presumir.
   """
 
@@ -37,7 +38,7 @@ defmodule Mix.Tasks.Xmldsig.Spike do
     envelope = assemble_envelope(app_hdr, document, signature_xml)
 
     unless Verifier.verify(envelope, certificate_der) == :ok do
-      Mix.raise("fixture do spike não verifica — não vale medir throughput sobre ela")
+      Mix.raise("fixture do spike não verifica, não vale medir throughput sobre ela")
     end
 
     Mix.shell().info("Fixture: #{byte_size(envelope)} bytes (AppHdr + Document + Signature)\n")

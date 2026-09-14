@@ -1,15 +1,31 @@
 defmodule Isox.Pain009 do
   @moduledoc """
-  Modelo ISO 20022 do pain.009 (solicitação de autorização de
-  recorrência / mandato), versão 1.1 — cria o estado de mandato pendente:
-  `MndtId`, frequência, datas de vigência, valor.
+  Solicitação de recorrência do Pix Automático: pede ao participante do
+  pagador que autorize uma série de cobranças.
 
-  `Mndt` é `max: ilimitado` no schema — `encode/3` aceita 1 mensagem ou
-  uma lista (lote: vários `Mndt` na mesma `Document`) e `decode/1`
-  devolve 1 struct ou uma lista de volta, mesmo padrão do `Pacs002`/
-  `Pacs004`/`Pacs008`. `MndtPrcgDtls` é `max: ilimitado` de verdade
-  (histórico de processamento), modelado como lista — schema exige ao
-  menos 1. `Ocrncs.SeqTp` (enum de valor único `"RCUR"`) fica fixo.
+  Versão 1.1. Cria a recorrência em estado pendente, com identificador,
+  frequência, vigência e valor. A resposta é uma `Isox.Pain012`, e o
+  cancelamento é uma `Isox.Pain011`.
+
+  São dois identificadores, e eles não se confundem: `mndt_id` é a
+  recorrência, o vínculo que dura; `mndt_req_id` é este pedido de
+  autorização. Uma recorrência pode ter mais de uma solicitação ao longo
+  da vida.
+
+  `Ocrncs.SeqTp` tem valor único (`"RCUR"`) e fica fixo.
+
+  ## As três datas
+
+  `mndt_prcg_dtls` é `[3..3]` no schema, e a planilha fixa a ordem:
+  `CRTN`, depois `CRAT`, depois `EXPR`. Não é lista livre, é sempre o
+  pacote de três.
+
+  ## Lote
+
+  `Mndt` é ilimitado no schema. `encode/3` aceita uma mensagem ou uma
+  lista, e `decode/1` devolve uma struct ou uma lista, conforme o XML.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -69,10 +85,10 @@ defmodule Isox.Pain009 do
 
   @doc """
   Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
-  dada. Aceita 1 mensagem ou uma lista de mensagens (lote — vira vários
+  dada. Aceita 1 mensagem ou uma lista de mensagens (lote: vira vários
   `Mndt` na mesma `Document`).
 
-  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML) — em
+  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML). Em
   lote, têm que ser iguais em todos os itens da lista.
   """
   @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
@@ -100,7 +116,8 @@ defmodule Isox.Pain009 do
   end
 
   @doc """
-  Decodifica um XML de pain.009 de volta para a struct — ou, quando a
+  Decodifica um XML de pain.009 de volta para a struct, ou
+  para uma lista de structs quando a
   mensagem traz mais de um `Mndt` (lote), para uma lista de structs.
   """
   @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}

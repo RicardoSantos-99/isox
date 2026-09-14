@@ -3,11 +3,11 @@ defmodule Isox.Xsd.Reader do
   # (complexType, simpleType, group, element no nível raiz do schema)
   # num mapa, prontos para o Xsd.Compiler resolver recursivamente.
   #
-  # Não interpreta namespace de verdade — os XSDs do catálogo não usam
+  # Não interpreta namespace de verdade: os XSDs do catálogo não usam
   # xs:import, então basta o nome local de cada tag (element, não
   # xs:element) e comparar por nome de tipo dentro do próprio arquivo.
   #
-  # Suporte de mix catalog.gen — não é API pública da lib.
+  # Suporte de mix catalog.gen. Não é API pública da lib.
   @moduledoc false
 
   import Isox.Xml.Records

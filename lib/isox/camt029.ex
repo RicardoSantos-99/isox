@@ -1,18 +1,27 @@
 defmodule Isox.Camt029 do
   @moduledoc """
-  Modelo ISO 20022 do camt.029 (resposta ao camt.055 — aceite
-  `ACCR` ou rejeição `RJCR`), versões 1.1 e 1.2 coexistindo (enums de
-  `rsn_prtry` diferem entre as duas: `v1_1` tem 4 códigos a mais que
-  `v1_2`). Correlaciona com o `PmtCxlId` do camt.055 original (aqui
-  `OrgnlPmtInfCxlId`).
+  Resposta ao pedido de cancelamento de Pix Agendado: aceita ou recusa a
+  `Isox.Camt055`.
 
-  `Sts.Conf` (enum de valor único `"INFO"`) fica fixo.
+  Versões 1.1 e 1.2 coexistindo. Os enums de `rsn_prtry` diferem entre
+  elas: a 1.1 tem quatro códigos a mais que a 1.2. A correlação com o
+  pedido é pelo `pmt_cxl_id` da camt.055, que aqui se chama
+  `orgnl_pmt_inf_cxl_id`.
 
-  Regra da planilha do catálogo, sem contrapartida no XSD (que não
-  expressa regra cruzada entre campos): `pmt_inf_cxl_sts == "ACCR"`
-  exige `rsn_prtry` ausente e `cxl_prcg_tp == "DHAC"`;
-  `pmt_inf_cxl_sts == "RJCR"` exige `rsn_prtry` presente e
-  `cxl_prcg_tp == "DHRC"`. `encode/3` valida isso explicitamente.
+  `Sts.Conf` tem valor único (`"INFO"`) e fica fixo.
+
+  ## Regra cruzada que o XSD não expressa
+
+  O XSD não sabe expressar dependência entre campos, então estas duas
+  combinações são validadas em `encode/3`, a partir da planilha do
+  catálogo:
+
+  - `pmt_inf_cxl_sts` igual a `"ACCR"` exige `rsn_prtry` ausente e
+    `cxl_prcg_tp` igual a `"DHAC"`.
+  - `pmt_inf_cxl_sts` igual a `"RJCR"` exige `rsn_prtry` presente e
+    `cxl_prcg_tp` igual a `"DHRC"`.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -117,7 +126,7 @@ defmodule Isox.Camt029 do
   # oficiais do BCB, ACEITA/REJEITA): ACCR nunca leva motivo e sempre é
   # DHAC; RJCR sempre leva motivo e sempre é DHRC. O XSD não força nada
   # disso (CxlStsRsnInf é só opcional pro schema; cxl_prcg_tp é campo
-  # livre com seu próprio enum) — sem esta checagem, dava pra montar um
+  # livre com seu próprio enum). Sem esta checagem, dava pra montar um
   # RJCR sem motivo nenhum (mensagem estruturalmente válida, mas muda
   # sem dizer por quê) ou uma combinação ACCR/DHRC inconsistente, sem
   # erro nenhum em lugar nenhum.

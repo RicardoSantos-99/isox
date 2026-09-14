@@ -1,6 +1,6 @@
 defmodule Isox.Xsd.Compiler do
   # Resolve recursivamente as definições lidas pelo Xsd.Reader numa árvore
-  # de Isox.Schema — sem indireção por nome: todo tipo referenciado
+  # de Isox.Schema, sem indireção por nome: todo tipo referenciado
   # já sai embutido no lugar.
   #
   # Cobre o subconjunto de XSD usado pelo catálogo (confirmado por varredura
@@ -8,15 +8,15 @@ defmodule Isox.Xsd.Compiler do
   # simpleType/restriction, choice, group (só ref, nunca aninhado fora de
   # uma sequência ou escolha), simpleContent/extension/attribute (o padrão
   # valor+moeda, ex. IntrBkSttlmAmt), element ref= e xs:any (tratado como
-  # opaco — é só o <Sgntr>).
+  # opaco, é só o <Sgntr>).
   #
   # xs:group ref= dentro de um xs:choice (só ocorre em reda.022) vira uma
-  # opção só — a lista de elementos do grupo inteiro (Schema.Choice), não
+  # opção só, a lista de elementos do grupo inteiro (Schema.Choice), não
   # elementos soltos achatados na escolha. Um grupo de 1 elemento e um
   # grupo de N elementos são tratados igual: a opção é sempre a lista de
   # elementos do grupo.
   #
-  # Suporte de mix catalog.gen — não é API pública da lib.
+  # Suporte de mix catalog.gen. Não é API pública da lib.
   @moduledoc false
 
   alias Isox.Schema.{Attribute, Choice, ComplexType, Element, SimpleType}
@@ -140,7 +140,7 @@ defmodule Isox.Xsd.Compiler do
       |> Enum.flat_map(fn child ->
         case Reader.local_tag(child) do
           "element" -> [resolve_element(child, definitions)]
-          # o grupo inteiro é 1 opção (a lista dos seus elementos) — não
+          # o grupo inteiro é 1 opção (a lista dos seus elementos), não
           # achata os elementos do grupo como opções soltas da escolha,
           # senão um grupo de N campos vira N opções independentes em vez
           # de "todos os N juntos, ou nenhum" (bug real: perdia campo no

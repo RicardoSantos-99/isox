@@ -32,7 +32,7 @@ defmodule Isox.Reda022Test do
   @mkt_spcfc_attr %{type: :mkt_spcfc_attr, val: "12345678901"}
 
   # o schema real exige ao menos 4 entradas em Mod (achado pela própria
-  # validação de round-trip, não documentado no dump da árvore) — todo
+  # validação de round-trip, não documentado no dump da árvore): todo
   # teste usa os 4 tipos juntos, como o exemplo oficial faz.
   defp message(mod) do
     %Reda022{

@@ -1,11 +1,19 @@
 defmodule Isox.Reda014 do
   @moduledoc """
-  Modelo ISO 20022 do reda.014 (solicitação de cadastro de
-  participante indireto sob um direto), versão 1.3.
+  Pedido de registro de participante indireto sob um direto.
 
-  `Tp.Prtry` (enum de valor único `"IDRT"`) e `MktSpcfcAttr.Nm` (enum de
-  valor único `"CNPJIDRT"`) ficam fixos — o schema real não modela outra
-  opção pra esta mensagem.
+  Versão 1.3. A resposta é uma `Isox.Reda016`.
+
+  Preste atenção em quem é quem: `ispb` é o participante direto que
+  **pede** o registro, e `cnpj` é o participante indireto que **está
+  sendo** registrado. O indireto entra por CNPJ, não por ISPB. Na
+  `Isox.Reda031`, que encerra a relação, é o contrário: lá o ISPB é o do
+  indireto.
+
+  `Tp.Prtry` (`"IDRT"`) e `MktSpcfcAttr.Nm` (`"CNPJIDRT"`) têm valor único
+  no schema e ficam fixos.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

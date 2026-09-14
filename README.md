@@ -7,7 +7,8 @@
 
 Codec ISO 20022 para o catálogo de mensagens do SPI (Pix, Banco Central do
 Brasil), com `encode/2` e `decode/1` genéricos por envelope (cabeçalho mais
-mensagem) e um módulo separado de assinatura XMLDSig no perfil do Manual de
+mensagem), um dicionário que diz o que cada campo de cada mensagem quer
+dizer, e um módulo separado de assinatura XMLDSig no perfil do Manual de
 Segurança do SFN.
 
 A lib cuida só do formato das mensagens. Ela não conhece transporte nem
@@ -108,6 +109,54 @@ Campos de `GrpHdr` como `msg_id` e `created_at` são únicos por XML, não por
 transação. Em lote, `encode/3` confere que todos os itens da lista
 concordam nesses campos e devolve erro se divergirem, em vez de usar o
 primeiro e ignorar o resto em silêncio.
+
+## O que cada campo quer dizer
+
+Integrar com o SPI é passar o dia com a planilha do catálogo aberta do lado
+do editor para descobrir que `dbtr_acct_id` é a conta do pagador. O
+`Isox.Dictionary` traz essa informação para dentro do código.
+
+```elixir
+iex> Isox.Pacs008 |> Isox.explain(:dbtr_acct_id) |> IO.puts()
+Campo            Isox.Pacs008.dbtr_acct_id
+Nome no catálogo contaUsuarioPagador
+Caminho XML      FIToFICstmrCdtTrf/CdtTrfTxInf/DbtrAcct/Id/Othr/Id
+Tipo             texto, até 20 caracteres
+Obrigatório      sim
+O que é          Número da conta de onde o dinheiro sai, como o PSP do pagador a identifica.
+```
+
+`Nome no catálogo` é a chave de busca: é por ele que se acha o campo em
+qualquer documento oficial do Pix.
+
+Campo de domínio traz os valores aceitos, com o significado de cada um:
+
+```elixir
+{:ok, codigos} = Isox.Dictionary.codes(Isox.Pacs008, :purp_cd)
+codigos["GSCB"]
+#=> "Pix Troco: compra com saque de dinheiro em espécie no mesmo pagamento."
+```
+
+Quando você não sabe em que mensagem o campo está, procure por qualquer
+termo. A busca ignora acento e caixa:
+
+```elixir
+Isox.search("chave pix") |> Enum.map(fn {mensagem, campo} -> {mensagem, campo.field} end)
+#=> [
+#=>   {Isox.Camt054, :cdtr_acct_proxy},
+#=>   {Isox.Pacs008, :cdtr_acct_proxy},
+#=>   {Isox.Trck002, :lcl_instrm},
+#=>   {Isox.Trck002, :cdtr_acct_proxy}
+#=> ]
+```
+
+`Isox.fields/1` devolve a mensagem inteira como dado, útil para montar
+formulário ou validação do seu lado. A documentação de cada mensagem traz a
+mesma informação em tabela, gerada a partir do mesmo dicionário.
+
+As descrições saem dos documentos que o Banco Central publica (XSD, planilha
+do catálogo e manuais do Pix), reescritas aqui. O catálogo continua sendo a
+fonte normativa: em caso de divergência, quem manda é o documento oficial.
 
 ## Assinatura digital
 

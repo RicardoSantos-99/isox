@@ -1,17 +1,20 @@
 defmodule Isox.Camt025 do
   @moduledoc """
-  Modelo ISO 20022 do camt.025 (recibo, resposta a trck.002),
-  versão 1.0 — até 500 confirmações por mensagem (`RctDtls` é
-  `max: ilimitado` no schema real, modelado como lista de verdade).
+  Recibo: a resposta a uma ou mais `Isox.Trck002`.
 
-  Cada confirmação correlaciona com um trck.002 por `OrgnlMsgId`/
-  `OrgnlPmtId` e traz um status (aceite/rejeição), com motivo opcional.
+  Versão 1.0. Um recibo responde até 500 reportes de uma vez, cada um
+  aceito ou rejeitado por conta própria: o mesmo recibo pode ter aceite e
+  rejeição misturados. A correlação de cada item é por `orgnl_msg_id` e
+  `orgnl_pmt_id`.
 
-  `StsRsn` (o bloco de motivo) é preenchido quando `Sts.Cd == "RJCT"`
-  (planilha do catálogo): `rsn_prtry` é quem decide se o bloco aparece
-  — `Rsn` é obrigatório dentro dele no schema real, `AddtlInf` que é
-  opcional. `addtl_inf` sem `rsn_prtry` é rejeitado explicitamente
-  (`encode/3`), já que não tem como virar `StsRsn` válido sem `Rsn`.
+  ## O motivo da rejeição
+
+  O bloco `StsRsn` existe quando `sts` é `"RJCT"`. Quem decide se ele
+  aparece é `rsn_prtry`, porque `Rsn` é obrigatório dentro dele e
+  `AddtlInf` é que é opcional. Por isso `addtl_inf` sem `rsn_prtry` é
+  rejeitado em `encode/3`: não haveria como montar um `StsRsn` válido.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -88,11 +91,11 @@ defmodule Isox.Camt025 do
       else: {:error, "campos obrigatórios ausentes: #{inspect(missing)}"}
   end
 
-  # StsRsn.Rsn é obrigatório sempre que StsRsn aparece no schema real —
+  # StsRsn.Rsn é obrigatório sempre que StsRsn aparece no schema real, e
   # AddtlInf é o campo opcional, não o contrário. addtl_inf sem
   # rsn_prtry não tem como virar XML válido (StsRsn exigiria Rsn), mas
   # sem esta checagem o erro só aparecia depois, no round-trip de
-  # confirm/2, como "elemento obrigatório ausente: Rsn" — confuso pra
+  # confirm/2, como "elemento obrigatório ausente: Rsn", confuso pra
   # quem não conhece a árvore XML interna.
   defp validate_confirmations(confirmations) do
     Enum.reduce_while(confirmations, :ok, fn c, :ok ->

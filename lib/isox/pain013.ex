@@ -1,33 +1,42 @@
 defmodule Isox.Pain013 do
   @moduledoc """
-  Modelo ISO 20022 do pain.013 (agendamento da instrução de
-  pagamento vinculada a um mandato ativo), versão 2.2 — na data agendada,
-  essa instrução vira o gatilho de uma pacs.008 real.
+  Instrução de pagamento agendada, vinculada a uma recorrência ativa do
+  Pix Automático.
 
-  `PmtInf`/`CdtTrfTx` é `max: ilimitado` no schema — `encode/3` aceita 1
-  mensagem ou uma lista (lote: vários `PmtInf` na mesma `Document`, com
-  `NbOfTxs` ajustado) e `decode/1` devolve 1 struct ou uma lista de
-  volta, mesmo padrão do `Pacs002`/`Pacs004`/`Pacs008`. `InitgPty` no
-  `GrpHdr` é sempre `[0]{14}` (14 zeros) no schema real — não é campo
-  variável, fica fixo, assim como `PmtMtd` ("TRF"), `InstrPrty` ("NORM"),
-  `SvcLvl.Prtry` ("PAGAGD"), `LclInstrm.Prtry` ("AUTO") e `ChrgBr`
-  ("SLEV"). Valor vai em `Amt/InstdAmt`, não `IntrBkSttlmAmt` — ainda não
-  liquidado. `Purp` aqui é `Prtry` (enum próprio), não `Cd` como no
-  `Pacs008`. `Tax` aqui é usado (bloco de Split Payment — divisão de IBS/CBS da
-  reforma tributária).
+  Versão 2.2. Na data marcada, esta instrução vira uma `Isox.Pacs008`
+  real, que repete o `end_to_end_id` gerado aqui. A resposta imediata é
+  uma `Isox.Pain014`, dizendo se o participante do pagador aceitou.
 
-  `ReqdExctnDt` é opcional no schema, mas obrigatório na prática quando
-  `purp_prtry == "AGND"` (agendamento futuro) e proibido quando
-  `"NTAG"`/`"RIFL"` (reenvio/retentativa, execução imediata) — regra da
-  planilha do catálogo (BCB), confirmada nos 4 exemplos oficiais.
-  `encode/3` valida isso.
+  O valor vai em `Amt/InstdAmt`, não em `IntrBkSttlmAmt`, porque ainda não
+  houve liquidação. `Purp` aqui é `Prtry`, com enum próprio, não `Cd` como
+  na pacs.008.
 
-  `Tax` é opcional e só permitido quando `dbtr_cpf_cnpj` é CNPJ (14
-  caracteres). Cada tipo de tributo em `tax_records` precisa de um
-  `Record` com `ctgy: "INF"` (informado pelo recebedor) e opcionalmente
-  outro com `ctgy: "COR"` (valor corrigido pela Plataforma Pública, tem
-  prioridade sobre o INF quando presente); a soma dos valores efetivos
-  não pode exceder `value`. `encode/3` valida tudo isso.
+  ## Campos fixos que não viram campo
+
+  `InitgPty` é `[0]{14}` no schema real, quatorze zeros literais, então
+  não é variável. O mesmo vale para `PmtMtd` (`"TRF"`), `InstrPrty`
+  (`"NORM"`), `SvcLvl.Prtry` (`"PAGAGD"`), `LclInstrm.Prtry` (`"AUTO"`) e
+  `ChrgBr` (`"SLEV"`).
+
+  ## Regras que o XSD não expressa
+
+  `reqd_exctn_dt` é opcional no schema, mas na prática é obrigatório
+  quando `purp_prtry` é `"AGND"` e proibido nos outros casos.
+
+  `tax_records` é o bloco de Split Payment, a divisão de IBS e CBS da
+  reforma tributária. Só é permitido quando `dbtr_cpf_cnpj` é CNPJ. Cada
+  tipo de tributo precisa de um registro com `ctgy` igual a `"INF"`, o
+  valor informado, e pode ter outro com `"COR"`, o valor corrigido pela
+  Plataforma Pública, que prevalece quando existe. A soma dos valores
+  efetivos não pode passar de `value`. `encode/3` valida tudo isso.
+
+  ## Lote
+
+  `PmtInf` é ilimitado no schema. `encode/3` aceita uma mensagem ou uma
+  lista, com `NbOfTxs` ajustado, e `decode/1` devolve uma struct ou uma
+  lista.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -85,10 +94,10 @@ defmodule Isox.Pain013 do
 
   @doc """
   Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
-  dada. Aceita 1 mensagem ou uma lista de mensagens (lote — vira vários
+  dada. Aceita 1 mensagem ou uma lista de mensagens (lote: vira vários
   `PmtInf` na mesma `Document`, com `NbOfTxs` ajustado à quantidade).
 
-  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML) — em
+  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML). Em
   lote, têm que ser iguais em todos os itens da lista.
   """
   @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
@@ -117,7 +126,8 @@ defmodule Isox.Pain013 do
   end
 
   @doc """
-  Decodifica um XML de pain.013 de volta para a struct — ou, quando a
+  Decodifica um XML de pain.013 de volta para a struct, ou
+  para uma lista de structs quando a
   mensagem traz mais de um `PmtInf` (lote), para uma lista de structs.
   """
   @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}

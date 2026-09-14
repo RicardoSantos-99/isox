@@ -1,33 +1,44 @@
 defmodule Isox.Camt054 do
   @moduledoc """
-  Modelo ISO 20022 do camt.054 (detalhamento de um lançamento da
-  Conta PI — a contrapartida contábil de cada pacs.008/002 liquidada),
-  versões 1.15 e 1.16 coexistindo. A maior mensagem do catálogo.
+  Detalhe de um lançamento da Conta PI: a contrapartida contábil de cada
+  pagamento liquidado.
 
-  `Ntfctn` é `max: ilimitado` no schema — o caminho comum é 1 (um
-  lançamento por notificação, como o próprio mensagens.md descreve: "um
-  por liquidação"), mas `encode/3` aceita 1 mensagem ou uma lista (lote:
-  vários `Ntfctn` na mesma `Document`) e `decode/1` devolve 1 struct ou
-  uma lista de volta, mesmo padrão do `Pacs002`/`Pacs004`/`Pacs008`.
-  `Ntry` já é `max: 1` no schema real, isso não muda.
+  Versões 1.15 e 1.16 coexistindo. É a maior mensagem do catálogo, e
+  repete os dados de pagador e recebedor da `Isox.Pacs008` com metadados
+  contábeis por cima. Chega de dois jeitos: como resposta a uma
+  `Isox.Camt060` que pediu `camt.054`, ou espontaneamente, quando o SPI
+  avisa um lançamento.
 
-  Cobre o caminho comum de um lançamento de liquidação (mesmos dados de
-  pagador/recebedor do `Pacs008`, mais metadados contábeis e, quando é
-  devolução, `RtrInf`). Ficam de fora, mesma razão do `Pacs008`: `Tax` e
-  `RmtInf.Strd` — ramos raros, disponíveis via codec genérico.
+  O mesmo pagamento gera dois lançamentos, um em cada Conta PI, com
+  `cdt_dbt_ind` oposto: o valor sai como `DBIT` do lado do pagador e entra
+  como `CRDT` do lado do recebedor.
 
-  `RltdAgts` é obrigatório como contêiner, mas `DbtrAgt`/`CdtrAgt` dentro
-  dele são cada um independentemente opcional (diferente do `Pacs008`,
-  onde os dois agentes são sempre obrigatórios) — confirmado contra o
-  schema real, não assumido do padrão anterior.
+  ## O que a struct cobre
 
-  `addtl_tx_inf` (`AddtlTxInf`) não é texto livre, apesar do nome —
-  o tipo XSD real (`Priority2Code`) e a planilha ("prioridadePagamento")
-  confirmam que é a prioridade da transação original (`HIGH`/`NORM`),
-  reaproveitando por engano o mesmo tipo ISO do `InstrPrty` de
-  `Pacs008`/`Pain013`. Fica com esse nome porque é a tag XML
-  (`AdditionalTransactionInformation`) do schema — mas só aceita esses
-  dois valores.
+  O caminho comum de um lançamento de liquidação, mais `RtrInf` quando é
+  devolução. Ficam de fora `Tax` e `RmtInf.Strd`, ramos raros que seguem
+  acessíveis pelo codec genérico, mesma decisão da `Isox.Pacs008`.
+
+  ## Dois pontos que o schema real desmente da intuição
+
+  `RltdAgts` é obrigatório como contêiner, mas `DbtrAgt` e `CdtrAgt`
+  dentro dele são opcionais cada um por si. É diferente da pacs.008, onde
+  os dois agentes são sempre obrigatórios.
+
+  `addtl_tx_inf` não é texto livre, apesar de a tag se chamar
+  `AdditionalTransactionInformation`. O tipo XSD é `Priority2Code` e só
+  aceita `"HIGH"` ou `"NORM"`: é a prioridade da transação original,
+  reaproveitando o mesmo tipo ISO do `InstrPrty` da pacs.008. O nome do
+  campo segue o da tag, mas o conteúdo é esse.
+
+  ## Lote
+
+  `Ntfctn` é ilimitado no schema. O caminho comum é um lançamento por
+  notificação, mas `encode/3` aceita uma mensagem ou uma lista, e
+  `decode/1` devolve uma struct ou uma lista. `Ntry` continua sendo no
+  máximo 1, isso não muda.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -37,7 +48,7 @@ defmodule Isox.Camt054 do
 
   # a maior mensagem do catálogo de verdade tem mais de 31 campos; achatar
   # em sub-structs quebraria a simetria com o resto do modelo (Pacs008 e
-  # companhia), sem ganho real — o VM ainda lida bem com 1 struct desse
+  # companhia), sem ganho real: o VM ainda lida bem com 1 struct desse
   # tamanho isolado.
   # credo:disable-for-next-line Credo.Check.Warning.StructFieldAmount
   defstruct [
@@ -105,10 +116,10 @@ defmodule Isox.Camt054 do
 
   @doc """
   Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
-  dada. Aceita 1 mensagem ou uma lista de mensagens (lote — vira vários
+  dada. Aceita 1 mensagem ou uma lista de mensagens (lote: vira vários
   `Ntfctn` na mesma `Document`).
 
-  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML) — em
+  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML). Em
   lote, têm que ser iguais em todos os itens da lista.
   """
   @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
@@ -136,7 +147,8 @@ defmodule Isox.Camt054 do
   end
 
   @doc """
-  Decodifica um XML de camt.054 de volta para a struct — ou, quando a
+  Decodifica um XML de camt.054 de volta para a struct, ou
+  para uma lista de structs quando a
   mensagem traz mais de um `Ntfctn` (lote), para uma lista de structs.
   """
   @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}

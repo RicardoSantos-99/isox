@@ -1,17 +1,20 @@
 defmodule Isox.Reda041 do
   @moduledoc """
-  Modelo ISO 20022 do reda.041 (aviso de mudança de
-  atividade/status de um participante), versão 1.7.
+  Aviso de mudança no cadastro de um participante.
 
-  `Rcrd.Othr` é `[1..3]` no schema real (`maxOccurs="3"`, sem
-  `minOccurs` — logo `1` implícito), não `ilimitado` — no máximo uma
-  alteração por campo (`FldNm`: `"MODP"`/`"NOME"`/`"NOMR"`, só 3 opções
-  na tabela de domínios). Ao contrário de `StsRsnInf`/`TxInfAndSts` nos
-  outros módulos, aqui a lista é o próprio conteúdo da mensagem (um ou
-  mais campos alterados), então é modelada como lista de verdade, não
-  simplificada pra 1 item. `encode/3` não precisa validar o limite
-  explicitamente — `confirm/2` (round-trip) já rejeita 0 ou mais de 3
-  itens via o motor (Isox.Xml.Codec, módulo interno).
+  Versão 1.7. Diz o que mudou, com valor antigo e valor novo de cada
+  campo.
+
+  `Rcrd.Othr` é `[1..3]` no schema real (`maxOccurs="3"`, sem `minOccurs`,
+  logo 1 implícito), não ilimitado: no máximo uma alteração por campo, e
+  só existem três campos alteráveis (`"MODP"`, `"NOME"` e `"NOMR"`).
+
+  Ao contrário de `StsRsnInf` e `TxInfAndSts` nos outros módulos, aqui a
+  lista é o próprio conteúdo da mensagem, então é modelada como lista de
+  verdade, não simplificada para um item. `encode/3` não precisa validar o
+  limite: o round-trip do `confirm/2` já rejeita 0 ou mais de 3.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

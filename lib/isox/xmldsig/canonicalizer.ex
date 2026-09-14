@@ -1,16 +1,16 @@
 defmodule Isox.Xmldsig.Canonicalizer do
   # Canonicalização XML exclusiva (http://www.w3.org/2001/10/xml-exc-c14n#,
-  # ADR 0006) — só o suficiente para o que o catálogo do SPI realmente usa:
+  # ADR 0006), só o suficiente para o que o catálogo do SPI realmente usa:
   # sem comentários, sem instruções de processamento, sem xml:lang/
   # xml:space, sem lista de prefixos inclusivos (InclusiveNamespaces).
   #
   # Um nó de namespace só é declarado num elemento se for visivelmente
   # utilizado ali (pelo próprio elemento ou por um atributo seu) e ainda não
-  # tiver sido renderizado por um ancestral na árvore de saída — não
+  # tiver sido renderizado por um ancestral na árvore de saída, não
   # necessariamente onde a declaração vivia no XML de origem. É essa regra,
   # não a localização original da declaração, que a torna "exclusiva".
   #
-  # Usado internamente por Signer/Verifier — não é API pública da lib.
+  # Usado internamente por Signer/Verifier. Não é API pública da lib.
   @moduledoc false
 
   import Isox.Xmldsig.Xml
@@ -18,7 +18,7 @@ defmodule Isox.Xmldsig.Canonicalizer do
   @doc "Decodifica e canonicaliza um XML completo, a partir do elemento raiz."
   @spec canonicalize(binary()) :: binary()
   def canonicalize(xml) when is_binary(xml) do
-    # Lista de bytes crus, não de codepoints (String.to_charlist/1) — o
+    # Lista de bytes crus, não de codepoints (String.to_charlist/1): o
     # XML declara encoding="UTF-8" e é o próprio xmerl quem decodifica a
     # partir disso; dar codepoint já decodificado confunde o parser diante
     # de qualquer caractere fora do ASCII (mesmo bug do Codec genérico).
@@ -29,7 +29,7 @@ defmodule Isox.Xmldsig.Canonicalizer do
   @doc """
   Canonicaliza um elemento já parseado (`:xmlElement`), com o namespace já
   renderizado por ancestrais fora desta chamada (mapa prefixo/`:default` =>
-  URI). Usado para canonicalizar sub-árvores — ex.: o `AppHdr` sem o
+  URI). Usado para canonicalizar sub-árvores, por exemplo o `AppHdr` sem o
   próprio `<Signature>`, para a referência com transformação
   enveloped-signature.
   """
@@ -60,7 +60,7 @@ defmodule Isox.Xmldsig.Canonicalizer do
     tag = element_tag(el)
 
     # Nós de namespace sempre vêm antes dos atributos comuns, como um
-    # grupo à parte — não é um único sort por (uri, nome) misturando os
+    # grupo à parte: não é um único sort por (uri, nome) misturando os
     # dois, senão um atributo sem namespace (uri "") poderia intercalar
     # com as declarações de namespace (que também "não têm uri" pra fim
     # de ordenação), o que a spec não permite.
@@ -100,7 +100,7 @@ defmodule Isox.Xmldsig.Canonicalizer do
     end
   end
 
-  # {prefix_or_nil, uri_or_nil} — uri nil significa "sem namespace", que
+  # {prefix_or_nil, uri_or_nil}, onde uri nil significa "sem namespace", que
   # nunca gera declaração.
   defp element_ns(el, ns) do
     case xmlElement(el, :nsinfo) do

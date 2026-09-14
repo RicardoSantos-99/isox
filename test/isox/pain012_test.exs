@@ -32,7 +32,7 @@ defmodule Isox.Pain012Test do
   }
 
   # accptd "true" sempre leva mndt_sts + mndt_prcg_dtls (CRTN/UPDT no
-  # mínimo) nos 12 exemplos oficiais do BCB — não existe "aceite sem
+  # mínimo) nos 12 exemplos oficiais do BCB: não existe "aceite sem
   # SplmtryData" de verdade, mesmo o bloco sendo opcional pro XSD.
   test "aceite, sem motivo, com status e histórico mínimos" do
     message = %{

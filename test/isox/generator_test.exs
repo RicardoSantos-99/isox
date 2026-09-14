@@ -43,7 +43,7 @@ defmodule Isox.GeneratorTest do
 
   test "head001_source gera um módulo que expõe o tipo dado" do
     type = %Isox.Schema.SimpleType{base: "string"}
-    # Module.concat/2, não o alias direto — o módulo só passa a existir
+    # Module.concat/2, não o alias direto, porque o módulo só passa a existir
     # depois do Code.eval_string/1 logo abaixo; um alias literal deixaria o
     # compilador avisar "função indefinida" sobre um módulo que ele vê (só
     # nesta análise estática) como gerado dinamicamente.
@@ -56,7 +56,7 @@ defmodule Isox.GeneratorTest do
 
   test "o código gerado compila e faz parse/build de ponta a ponta" do
     # o AppHdr do módulo gerado referencia sempre o Isox.Generated.Head001
-    # de verdade (já compilado, a partir dos XSDs reais) — não um substituto
+    # de verdade (já compilado, a partir dos XSDs reais), não um substituto
     # de teste, para não depender de redefinir um módulo global.
     read_result = Reader.read_content(@xsd_message)
     root = Compiler.resolve_root(read_result)

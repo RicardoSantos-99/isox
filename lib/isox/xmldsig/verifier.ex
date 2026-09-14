@@ -1,17 +1,19 @@
 defmodule Isox.Xmldsig.Verifier do
   @moduledoc """
   Verificação do perfil de assinatura SPI (Manual de Segurança do SFN Vol.
-  II §3.3): recalcula os três digests com canonicalização real — os bytes
+  II §3.3): recalcula os três digests com canonicalização real, porque os
+  bytes
   vêm de terceiro, então, diferente da assinatura na saída, não dá pra
-  confiar que já chegaram canônicos — e confere a assinatura RSA-SHA256
+  não dá para supor que já chegaram canônicos, e confere a assinatura
+  RSA-SHA256
   sobre o `SignedInfo`.
 
   Assume a ordem fixa de `Reference` do perfil SPI (KeyInfo, AppHdr,
-  Document) em vez de resolver por tipo — simplificação razoável para um
+  Document) em vez de resolver por tipo. É simplificação razoável para um
   verificador de perfil único, não um XMLDSig genérico.
 
   `certificate_der` é o certificado que **quem chama já confia** para o
-  participante emissor — o manual deixa explícito que cada participante
+  participante emissor. O manual deixa explícito que cada participante
   mantém sua própria base de números de série e chaves públicas (§3.3,
   nota de rodapé), não que se deva confiar em algo vindo dentro da
   mensagem. O `KeyInfo` da mensagem só aponta (por emissor + número de
@@ -58,12 +60,13 @@ defmodule Isox.Xmldsig.Verifier do
 
   @doc """
   Verifica `envelope_xml` (`<Envelope><AppHdr>...<Document>...`) contra o
-  certificado esperado (DER). `:ok` ou `{:error, motivo}` — motivo nunca é
+  certificado esperado (DER). `:ok` ou `{:error, motivo}`, e o motivo
+  nunca é
   detalhe de exceção interna, só as categorias em `t:error/0`.
   """
   @spec verify(binary(), binary()) :: :ok | {:error, error()}
   def verify(envelope_xml, expected_certificate_der) do
-    # Bytes crus, não codepoints — ver Canonicalizer.canonicalize/1.
+    # Bytes crus, não codepoints. Ver Canonicalizer.canonicalize/1.
     {root, _rest} = :xmerl_scan.string(:binary.bin_to_list(envelope_xml), quiet: true)
 
     with {:ok, app_hdr} <- required(child(root, "AppHdr"), :missing_app_hdr),
@@ -80,7 +83,7 @@ defmodule Isox.Xmldsig.Verifier do
   end
 
   # `required/2` sempre devolve {:ok, _} ou {:error, _}, nunca o valor cru
-  # — misturar `nil` com um átomo de fallback (`valor || :faltando`) não dá
+  # Misturar `nil` com um átomo de fallback (`valor || :faltando`) não dá
   # pra distinguir "achei" de "não achei" num guard `not is_nil/1`, porque
   # o próprio átomo de fallback também não é nil (bug real, achado testando
   # verificação contra uma mensagem sem assinatura nenhuma).

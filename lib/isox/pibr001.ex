@@ -1,8 +1,13 @@
 defmodule Isox.Pibr001 do
   @moduledoc """
-  Modelo ISO 20022 do pibr.001 (echo request), versão 1.3 — ping:
-  `Data` é um text livre (até 35 caracteres) que o pibr.002 de resposta
-  ecoa em `OrgnlData`.
+  Eco: o ping do SPI.
+
+  Versão 1.3. `data` é um texto livre de até 35 caracteres que volta
+  idêntico em `orgnl_data` na `Isox.Pibr002` de resposta. Serve para
+  provar que o canal está de pé, sem mover dinheiro nem tocar em cadastro
+  nenhum.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

@@ -1,17 +1,28 @@
 defmodule Isox.Pacs004 do
   @moduledoc """
-  Modelo ISO 20022 do pacs.004 (devolução), versão 1.5 — a ordem
-  de devolução de uma pacs.008 já liquidada, referenciando a original por
-  `OrgnlEndToEndId`.
+  Devolução: a ordem que faz o dinheiro de um Pix já liquidado voltar.
 
-  `TxInf` é `max: ilimitado` no XSD e o catálogo oficial documenta lote de
-  verdade (`pacs.004_SPI_10_msg.xml`, 10 transações numa mensagem só).
-  `encode/3` aceita 1 mensagem ou uma lista (lote); `decode/1` devolve 1
-  struct ou uma lista, dependendo de quantas `TxInf` o XML trouxer.
+  Versão 1.5. Aponta o pagamento original por `orgnl_end_to_end_id`, e
+  ganha identificador próprio em `rtr_id`, que segue o mesmo formato do
+  idFimAFim mas começa com `D` em vez de `E`. A resposta é uma
+  `Isox.Pacs002`.
 
-  Mesma validação em duas camadas dos outros: `encode/3` confere
-  obrigatoriedade do modelo e reaproveita o `decode` do próprio módulo
-  gerado pra pattern/enum/cardinalidade, sem duplicar regra.
+  Devolução parcial é permitida, então `value` pode ser menor que o
+  original. Maior, não, e a soma das devoluções também não pode passar do
+  valor original.
+
+  Os dois agentes mantêm os papéis do pagamento original: quem pagou
+  continua sendo o `dbtr`, mesmo que agora seja ele quem recebe o dinheiro
+  de volta.
+
+  ## Lote
+
+  `TxInf` é ilimitado no XSD, e o catálogo documenta lote de verdade
+  (`pacs.004_SPI_10_msg.xml`, 10 transações numa mensagem só). `encode/3`
+  aceita uma mensagem ou uma lista, e `decode/1` devolve uma struct ou uma
+  lista, conforme o XML.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -64,10 +75,10 @@ defmodule Isox.Pacs004 do
 
   @doc """
   Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
-  dada. Aceita 1 mensagem ou uma lista (lote — vira várias `TxInf` na
+  dada. Aceita 1 mensagem ou uma lista (lote: vira várias `TxInf` na
   mesma `Document`, com `NbOfTxs` ajustado à quantidade).
 
-  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML) — em
+  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML). Em
   lote, têm que ser iguais em todos os itens da lista.
   """
   @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
@@ -95,7 +106,8 @@ defmodule Isox.Pacs004 do
   end
 
   @doc """
-  Decodifica um XML de pacs.004 de volta para a struct — ou, quando a
+  Decodifica um XML de pacs.004 de volta para a struct, ou
+  para uma lista de structs quando a
   mensagem traz mais de uma `TxInf` (lote), para uma lista de structs.
   """
   @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}

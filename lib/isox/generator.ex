@@ -2,11 +2,11 @@ defmodule Isox.Generator do
   # Emite, a partir do schema já resolvido (Xsd.Compiler), o texto-fonte de
   # um módulo Isox.Generated.<Mensagem>.<Versao> (ADR 0004).
   #
-  # O AppHdr (BAH, head.001) é idêntico em todo XSD do catálogo — em vez de
+  # O AppHdr (BAH, head.001) é idêntico em todo XSD do catálogo. Em vez de
   # embutir uma cópia por mensagem, o módulo gerado referencia
   # Isox.Generated.Head001.type/0 em tempo de execução.
   #
-  # Suporte de mix catalog.gen — não é API pública da lib.
+  # Suporte de mix catalog.gen. Não é API pública da lib.
   @moduledoc false
 
   alias Isox.Schema.Element

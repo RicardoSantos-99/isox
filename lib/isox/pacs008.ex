@@ -1,26 +1,41 @@
 defmodule Isox.Pacs008 do
   @moduledoc """
-  Modelo ISO 20022 do pacs.008 (ordem de crédito), versões 1.15 e
-  1.16 (ADR 0002) — campos com nome amigável em vez do mapa genérico cru
-  que o motor de codec interno produz.
+  Ordem de crédito: a mensagem que move o dinheiro de um Pix.
 
-  Cobre o caminho comum de uma ordem de crédito do Pix: os campos sempre
-  obrigatórios da árvore real do XSD, mais os opcionais realmente usados
-  (`InstrId`, `TxId`, `InitgPty`, `Prxy`/proxy, `RmtInf.Ustrd`). Fica de
-  fora `Tax` e `RmtInf.Strd` — ramos raros fora do fluxo padrão do Pix.
+  O participante do pagador manda uma pacs.008 ao SPI, e o SPI responde com
+  uma `Isox.Pacs002` dizendo se liquidou ou rejeitou. Os dois lados se
+  amarram pelo `end_to_end_id`.
 
-  `CdtTrfTxInf` é `max: ilimitado` no XSD e o catálogo oficial documenta
-  lote de verdade (`pacs.008_CONTA_10_msg.xml`/`pacs.008_END_10_msg.xml`,
-  10 transações numa mensagem só). `encode/3` aceita 1 mensagem ou uma
-  lista (lote); `decode/1` devolve 1 struct ou uma lista, dependendo de
-  quantas `CdtTrfTxInf` o XML trouxer.
+  Versões 1.15 e 1.16 (ADR 0002). A struct dá nome a cada campo, em vez do
+  mapa genérico e cru que o motor de codec interno produz.
 
-  `encode/3` valida antes de montar: o motor de codec interno confia no
-  termo que recebe (não valida pattern/enum/obrigatoriedade), então essa
-  camada confere os campos obrigatórios do modelo e, depois de montar o
-  XML, faz o caminho de volta (`decode` do próprio módulo gerado) pra
-  reaproveitar a validação de pattern/enum/cardinalidade que o parser já
-  faz — sem duplicar regra nenhuma.
+  ## O que a struct cobre
+
+  O caminho comum de um Pix: todos os campos obrigatórios da árvore real do
+  XSD, mais os opcionais que aparecem de fato (`InstrId`, `TxId`,
+  `InitgPty`, `Prxy`, `RmtInf.Ustrd`). Ficam de fora `Tax` e `RmtInf.Strd`,
+  ramos raros fora do fluxo padrão do Pix.
+
+  ## Lote
+
+  `CdtTrfTxInf` é ilimitado no XSD, e o catálogo documenta lote de verdade
+  (`pacs.008_CONTA_10_msg.xml`, 10 transações numa mensagem só). `encode/3`
+  aceita 1 mensagem ou uma lista; `decode/1` devolve 1 struct ou uma lista,
+  conforme o que o XML trouxer.
+
+  Os quatro campos de `GrpHdr` (`msg_id`, `created_at`, `instr_prty`,
+  `svc_lvl_prtry`) valem para o XML inteiro, não por transação, então em
+  lote precisam estar iguais em todos os itens da lista.
+
+  ## Validação
+
+  `encode/3` confere os campos obrigatórios e, depois de montar o XML, faz o
+  caminho de volta pelo módulo gerado. Isso reaproveita a validação de
+  pattern, enum e cardinalidade que o parser já faz, sem duplicar regra
+  nenhuma. O motor de codec sozinho não valida nada: ele confia no termo que
+  recebe.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -110,11 +125,11 @@ defmodule Isox.Pacs008 do
 
   @doc """
   Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
-  dada. Aceita 1 mensagem ou uma lista (lote — vira várias `CdtTrfTxInf`
+  dada. Aceita 1 mensagem ou uma lista (lote: vira várias `CdtTrfTxInf`
   na mesma `Document`, com `NbOfTxs` ajustado à quantidade).
 
   `msg_id`/`created_at`/`instr_prty`/`svc_lvl_prtry` são de `GrpHdr` (uma
-  vez por mensagem XML) — em lote, têm que ser iguais em todos os itens
+  vez por mensagem XML). Em lote, têm que ser iguais em todos os itens
   da lista.
   """
   @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
@@ -143,8 +158,8 @@ defmodule Isox.Pacs008 do
   end
 
   @doc """
-  Decodifica um XML de pacs.008 (qualquer versão) de volta para a struct
-  — ou, quando a mensagem traz mais de uma `CdtTrfTxInf` (lote), para
+  Decodifica um XML de pacs.008 (qualquer versão) de volta para a
+  struct, ou para uma lista de structs quando a mensagem traz mais de uma `CdtTrfTxInf` (lote), para
   uma lista de structs.
   """
   @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}

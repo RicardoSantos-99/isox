@@ -45,7 +45,7 @@ defmodule Isox.Camt029Test do
     assert de_volta.rsn_prtry == "CH16"
   end
 
-  # planilha do catálogo: ACCR nunca leva motivo, RJCR sempre leva —
+  # planilha do catálogo: ACCR nunca leva motivo, RJCR sempre leva, e
   # confirmado pelos exemplos oficiais camt.029_ACEITA/REJEITA_CANCELAMENTO.
   test "ACCR com reason é rejeitado" do
     message = %{@message | rsn_prtry: "CH16"}

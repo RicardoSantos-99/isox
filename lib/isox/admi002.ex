@@ -1,16 +1,22 @@
 defmodule Isox.Admi002 do
   @moduledoc """
-  Modelo ISO 20022 do admi.002 (recusa de mensagem) — resposta de
-  erro da ICOM referenciando a mensagem recusada por `RltdRef/Ref`, que é
-  o `PI-ResourceId` devolvido no ingresso daquela mensagem (Manual VIII).
+  Recusa de mensagem: o que o SPI responde quando nem chegou a entender o
+  que recebeu.
 
-  Só existe uma versão no catálogo (1.5) — sem divergência a testar, mas
-  `encode/3` mantém o parâmetro de versão pela mesma razão do ADR 0002:
-  a unidade de versionamento é `{mensagem, versão}`, não "o catálogo".
+  Versão 1.5, a única do catálogo. A mensagem recusada é apontada por
+  `ref`, que é o `PI-ResourceId` devolvido no ingresso dela (Manual VIII).
 
-  Mesma validação em duas camadas dos outros dois: `encode/3` confere
-  obrigatoriedade do modelo e reaproveita o `decode` do módulo gerado
-  pra pattern/enum/tamanho, sem duplicar regra.
+  A admi.002 é a resposta de último recurso. Quando o SPI consegue ler a
+  mensagem, ele responde no formato dela: pacs.002 para um pagamento,
+  reda.016 para um pedido de cadastro. A admi.002 aparece quando isso não
+  é possível, então ela não traz o conteúdo do que foi recusado, só a
+  referência.
+
+  `encode/3` mantém o parâmetro de versão mesmo havendo uma só, pela razão
+  da ADR 0002: a unidade de versionamento é o par mensagem e versão, não o
+  catálogo inteiro.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

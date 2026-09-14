@@ -12,7 +12,7 @@ defmodule Isox.Xmldsig.CanonicalizerTest do
     # Regressão: usar String.to_charlist/1 (codepoints já decodificados)
     # em vez de :binary.bin_to_list/1 (bytes crus) faz o :xmerl_scan
     # rejeitar qualquer caractere fora do ASCII quando o XML declara
-    # encoding="UTF-8" — quem decodifica a partir dos bytes é o próprio
+    # encoding="UTF-8". Quem decodifica a partir dos bytes é o próprio
     # xmerl, não o Elixir antes de chamar.
     xml = ~s(<?xml version="1.0" encoding="UTF-8"?><e>não confere, коа çãé</e>)
 

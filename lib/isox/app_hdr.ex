@@ -1,12 +1,16 @@
 defmodule Isox.AppHdr do
   @moduledoc """
-  BAH (`head.001`) — cabeçalho compartilhado por toda mensagem do catálogo
-  (Manual VIII). Fica isolado aqui porque toda mensagem aprofundada
-  (pacs.008, pacs.002, admi.002, ...) monta o mesmo cabeçalho do mesmo
-  jeito; só o `Document` muda por mensagem.
+  BAH (`head.001`): o cabeçalho que toda mensagem do catálogo carrega
+  (Manual VIII).
 
-  `Sgntr` sai sempre vazio: a assinatura fica para a lib de XMLDSig
-  (ADR 0003, ADR 0006), ainda não implementada.
+  Fica isolado aqui porque todas as mensagens montam o mesmo cabeçalho do
+  mesmo jeito. Só o `Document` muda de uma para outra.
+
+  `Sgntr` sai sempre vazio deste módulo. A assinatura é montada à parte,
+  por `Isox.sign/4`, e o codec trata `<Sgntr>` como opaco (ADR 0003, ADR
+  0006).
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   defstruct [:from_ispb, :to_ispb, :biz_msg_idr, :created_at]

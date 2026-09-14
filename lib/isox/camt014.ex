@@ -1,13 +1,17 @@
 defmodule Isox.Camt014 do
   @moduledoc """
-  Modelo ISO 20022 do camt.014 (consulta de identificação de
-  participante — `ReturnMember`), versão 1.6 — lookup num registro
-  estático/configurável de participantes: ISPB consultado (`MmbId`) mais
-  os dados do participante (`MmbOrErr.Mmb`) e do role (`PtyRoleIdSD1`).
+  Identificação de participante: quem é o dono de um ISPB e em que
+  situação ele está.
 
-  Todo campo do schema real é obrigatório — nenhum opcional a tratar.
-  `RptOrErr` só resolve a opção `Rpt` no schema compilado hoje (sem `Err`
-  no perfil do SPI); se aparecer um exemplo real com `Err`, revisitar.
+  Versão 1.6. Serve para consultar o registro de participantes do SPI e
+  também para anunciar mudança de situação, já que a mesma mensagem
+  carrega `mmb_sts_cd` dizendo se o participante entrou ou saiu.
+
+  Todo campo do schema é obrigatório, então não há opcional a tratar.
+  `RptOrErr` resolve só a opção `Rpt` no perfil do SPI, sem `Err`. Se
+  aparecer um exemplo oficial com `Err`, é caso de revisitar.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

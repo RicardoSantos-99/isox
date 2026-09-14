@@ -85,7 +85,7 @@ defmodule Isox.Pacs002Test do
 
   # TxInfAndSts é `max: ilimitado` no XSD (confirmado com exemplo oficial
   # do BCB: pacs.002_SPI_10_msg.xml vem com 10 transações numa mensagem
-  # só) — encode/3 aceita uma lista de mensagens e decode/1 devolve uma
+  # só). encode/3 aceita uma lista de mensagens e decode/1 devolve uma
   # lista de volta, sem crashar e sem recusar a forma de mensagem que o
   # catálogo permite.
   test "lote: encode aceita lista, decode devolve lista de volta" do

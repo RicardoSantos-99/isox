@@ -4,10 +4,10 @@ defmodule Isox.Schema do
   # que o motor genérico (Xml.Codec) percorre para fazer parse/build.
   #
   # Não referencia tipo por nome: cada árvore já vem com todo tipo nomeado
-  # do XSD resolvido e embutido no lugar — não há indireção em tempo de
+  # do XSD resolvido e embutido no lugar: não há indireção em tempo de
   # execução.
   #
-  # Representação interna do schema — não é API pública da lib.
+  # Representação interna do schema. Não é API pública da lib.
   @moduledoc false
 
   defmodule Element do
@@ -38,7 +38,7 @@ defmodule Isox.Schema do
     #
     # fraction_digits/total_digits/min_inclusive/max_inclusive só valem pra
     # base "decimal"/"integer" (ex.: ActiveCurrencyAndAmount_SimpleType:
-    # fractionDigits 2, totalDigits 18, minInclusive 0) — sem eles, um valor
+    # fractionDigits 2, totalDigits 18, minInclusive 0). Sem eles, um valor
     # monetário como "-50.00" ou "abc" passava reto pelo parse, porque
     # pattern/enum/tamanho não cobrem faixa numérica nem casas decimais.
     @moduledoc false
@@ -69,7 +69,7 @@ defmodule Isox.Schema do
     # Um <xs:choice>: exatamente uma das opções listadas aparece (ou
     # nenhuma, se min: 0). Uma opção é normalmente 1 elemento; quando vem
     # de xs:group ref= dentro do <xs:choice> e o grupo tem mais de 1
-    # elemento, a opção é a lista de elementos do grupo inteiro — todos
+    # elemento, a opção é a lista de elementos do grupo inteiro: todos
     # aparecem juntos, ou nenhum (ex.: reda.022, ReqdModContatoChoice).
     @moduledoc false
     @enforce_keys [:options]
@@ -85,7 +85,7 @@ defmodule Isox.Schema do
   defmodule ComplexType do
     # Um <xs:complexType>: uma sequência de elementos/escolhas, mais,
     # opcionalmente, atributos e conteúdo de texto simples (simpleContent +
-    # extension — ex.: IntrBkSttlmAmt, que tem valor e o atributo Ccy).
+    # extension, por exemplo IntrBkSttlmAmt, que tem valor e o atributo Ccy).
     @moduledoc false
     defstruct content: [], attributes: [], text: nil
 

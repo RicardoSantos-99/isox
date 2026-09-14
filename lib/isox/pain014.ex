@@ -1,25 +1,33 @@
 defmodule Isox.Pain014 do
   @moduledoc """
-  Modelo ISO 20022 do pain.014 (resposta a pain.013), versões 2.3
-  e 2.4 coexistindo. Correlaciona com a instrução agendada por
-  `OrgnlPmtInfId`/`OrgnlEndToEndId`.
+  Resposta a uma instrução agendada: o participante do pagador aceita ou
+  recusa a `Isox.Pain013`.
 
-  `OrgnlPmtInfAndSts` é `max: ilimitado` no schema — `encode/3` aceita 1
-  mensagem ou uma lista (lote: vários `OrgnlPmtInfAndSts` na mesma
-  `Document`) e `decode/1` devolve 1 struct ou uma lista de volta, mesmo
-  padrão do `Pacs002`/`Pacs004`/`Pacs008`.
+  Versões 2.3 e 2.4 coexistindo. A correlação é por `orgnl_pmt_inf_id` e
+  `orgnl_end_to_end_id`.
 
-  O schema real só define `TxSts` como `ACSP`/`RJCT` — um eventual estado
-  de fila/pendência não existe neste schema, então não é modelado aqui.
+  O schema só define dois status, `"ACSP"` e `"RJCT"`. Não existe estado
+  de fila ou pendência aqui, então não há o que modelar.
 
-  `InitgPty` (14 zeros) e `OrgnlGrpInfAndSts` (`OrgnlMsgId` com 32 zeros,
-  `OrgnlMsgNmId` com 8 zeros) são valores fixos no perfil do BCB, não
-  campos variáveis — a correlação de verdade acontece em
+  ## Três campos obrigatórios que não são campos
+
+  `InitgPty` é `[0]{14}` no schema, e o grupo original é `[0]{32}` em
+  `OrgnlMsgId` e `[0]{8}` em `OrgnlMsgNmId`. São zeros literais exigidos
+  pelo XSD, não valores a preencher: a correlação de verdade acontece em
   `OrgnlPmtInfAndSts`, não no grupo.
 
-  `StsRsnInf`/`rsn_prtry` é condicional a `tx_sts`, regra da planilha do
-  catálogo (BCB): obrigatório quando `"RJCT"`, proibido quando `"ACSP"`
-  — confirmado nos 4 exemplos oficiais. `encode/3` valida isso.
+  ## Regra cruzada que o XSD não expressa
+
+  `rsn_prtry` é obrigatório quando `tx_sts` é `"RJCT"` e proibido quando é
+  `"ACSP"`. Confirmado nos quatro exemplos oficiais e validado em
+  `encode/3`.
+
+  ## Lote
+
+  `OrgnlPmtInfAndSts` é ilimitado no schema. `encode/3` aceita uma
+  mensagem ou uma lista, e `decode/1` devolve uma struct ou uma lista.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -67,10 +75,10 @@ defmodule Isox.Pain014 do
 
   @doc """
   Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
-  dada. Aceita 1 mensagem ou uma lista de mensagens (lote — vira vários
+  dada. Aceita 1 mensagem ou uma lista de mensagens (lote: vira vários
   `OrgnlPmtInfAndSts` na mesma `Document`).
 
-  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML) — em
+  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML). Em
   lote, têm que ser iguais em todos os itens da lista.
   """
   @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
@@ -99,7 +107,8 @@ defmodule Isox.Pain014 do
   end
 
   @doc """
-  Decodifica um XML de pain.014 de volta para a struct — ou, quando a
+  Decodifica um XML de pain.014 de volta para a struct, ou
+  para uma lista de structs quando a
   mensagem traz mais de um `OrgnlPmtInfAndSts` (lote), para uma lista de
   structs.
   """

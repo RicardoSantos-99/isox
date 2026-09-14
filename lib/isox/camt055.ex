@@ -1,16 +1,21 @@
 defmodule Isox.Camt055 do
   @moduledoc """
-  Modelo ISO 20022 do camt.055 (pedido de cancelamento de ordem
-  agendada — Pix Agendado), versão 1.1. Referencia a ordem agendada por
-  `OrgnlEndToEndId` e traz motivo (`CxlRsnInf`). Todo campo do schema
-  real é obrigatório.
+  Pedido de cancelamento de Pix Agendado.
 
-  `cxl_prcg_tp` (`CxlPrcgTp`) depende de qual lado está solicitando o
-  cancelamento — regra da planilha do catálogo, não verificável só com
-  os campos desta mensagem (`assgnr_ispb` não diz por si só se é o
-  participante do pagador ou do recebedor): `"DHIP"` quando quem
-  solicita é o participante do usuário pagador, `"DHSR"` quando é o do
-  usuário recebedor. Cabe a quem chama `encode/3` escolher certo.
+  Versão 1.1. Aponta a ordem agendada por `orgnl_end_to_end_id` e traz o
+  motivo em `rsn_prtry`. A resposta é uma `Isox.Camt029`. Todo campo do
+  schema é obrigatório.
+
+  ## Um campo que a mensagem sozinha não decide
+
+  `cxl_prcg_tp` depende de qual lado está pedindo o cancelamento:
+  `"DHSR"` quando quem pede é o participante do usuário recebedor,
+  `"DHIP"` quando é o do pagador. Os campos desta mensagem não bastam
+  para saber qual dos dois é: `assgnr_ispb` sozinho não diz o papel. A
+  regra está na planilha do catálogo e a escolha certa cabe a quem chama
+  `encode/3`.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

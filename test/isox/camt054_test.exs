@@ -80,7 +80,7 @@ defmodule Isox.Camt054Test do
     assert de_volta.rtr_rsn_addtl_inf == "devolução solicitada"
   end
 
-  # AddtlTxInf não é texto livre apesar do nome — o tipo XSD real é o
+  # AddtlTxInf não é texto livre apesar do nome: o tipo XSD real é o
   # mesmo enum HIGH/NORM do InstrPrty (planilha: "prioridadePagamento").
   # Confirmado com os exemplos oficiais do BCB (camt.054_det_lancamento e
   # _dinheiro_especie vêm com addtl_tx_inf "HIGH").

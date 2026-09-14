@@ -1,11 +1,15 @@
 defmodule Isox.Admi004 do
   @moduledoc """
-  Modelo ISO 20022 do admi.004 (evento de sistema, ex.: mudança de
-  data contábil), versão 1.2 — notificação sem referência transacional.
+  Evento de sistema: o aviso que o SPI manda a todos os participantes, sem
+  relação com transação nenhuma.
 
-  `EvtCd` tem um único valor possível no enum (`"SPI"`) — não é modelado
-  como campo, fica fixo (mesmo tratamento de `SttlmMtd`/`ChrgBr` no
-  `Pacs008`).
+  Versão 1.2. O caso mais comum é a mudança da data contábil.
+
+  O código do evento (`EvtCd`) tem um único valor possível no enum
+  (`"SPI"`), então fica fixo e não vira campo, mesmo tratamento dado a
+  `SttlmMtd` e `ChrgBr` na `Isox.Pacs008`.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

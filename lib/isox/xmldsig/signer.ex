@@ -1,12 +1,12 @@
 defmodule Isox.Xmldsig.Signer do
   @moduledoc """
   Núcleo do XMLDSig do Pix (Manual de Segurança do SFN Vol. II §3), comum
-  aos dois perfis que o manual define: SPI (3 `<ds:Reference>` — tabela 3)
-  e DICT (2 `<ds:Reference>` — tabela 4). Hoje só o perfil SPI está
-  implementado (`sign/4`); `sign_references/3` e `key_info_xml/2` já são o
-  suficiente para montar o perfil do DICT quando existir um simulador para
-  ele — a diferença entre os dois perfis é só a lista de referências, não
-  o resto do mecanismo (§3.2 do manual: os passos são os mesmos).
+  aos dois perfis que o manual define: SPI, com três `<ds:Reference>`
+  (tabela 3), e DICT, com duas (tabela 4). Hoje só o perfil SPI está
+  implementado, em `sign/4`. `sign_references/3` e `key_info_xml/2` já
+  bastam para montar o do DICT quando existir um simulador para ele, já
+  que a diferença entre os dois é só a lista de referências, não o resto
+  do mecanismo (§3.2 do manual: os passos são os mesmos).
 
   RSA-SHA256, digest SHA-256, canonicalização exclusiva.
   """
@@ -34,20 +34,23 @@ defmodule Isox.Xmldsig.Signer do
   @type reference_spec :: {uri :: String.t() | nil, transforms :: [String.t()], binary()}
 
   @doc """
-  Perfil SPI (tabela 3): três `<ds:Reference>` — `KeyInfo` por Id, `AppHdr`
-  (sem `<Sgntr>` preenchido, transformação enveloped-signature) e
-  `Document` (sem atributo `URI` — fora do processamento padrão de
-  XMLDSig, "deve ser interpretada pela aplicação de forma a referenciar a
-  mensagem ISO 20.022 propriamente dita", manual §3.1).
+  Perfil SPI (tabela 3): três `<ds:Reference>`, sendo `KeyInfo` por Id,
+  `AppHdr` sem `<Sgntr>` preenchido e com transformação
+  enveloped-signature, e `Document` sem atributo `URI`. A última fica fora
+  do processamento padrão de XMLDSig: "deve ser interpretada pela
+  aplicação de forma a referenciar a mensagem ISO 20.022 propriamente
+  dita", manual §3.1.
 
   **`app_hdr_xml` e `document_xml` precisam já vir em forma canônica
-  exclusiva** — quem chama é o caminho de template da lib de codec (ADR
-  0006), e essa é justamente a razão de existir dele: sem isso, assinar
-  não paga canonicalização no caminho quente. Passar XML não-canônico
-  aqui produz uma assinatura que não bate na verificação (que sempre
-  canonicaliza de verdade, porque não pode confiar no que chegou de
-  terceiro) — não é validado nesta função porque validar seria a mesma
-  canonicalização que o caminho de template existe pra evitar.
+  exclusiva.** Quem chama é o caminho de template da lib de codec (ADR
+  0006), e essa é a razão de ele existir: sem isso, assinar pagaria
+  canonicalização no caminho quente.
+
+  Passar XML não canônico aqui produz uma assinatura que não bate na
+  verificação, porque a verificação sempre canonicaliza de verdade (não
+  pode confiar no que chegou de terceiro). Isto não é checado aqui de
+  propósito: checar seria fazer a mesma canonicalização que o caminho de
+  template existe para evitar.
   """
   @spec sign(binary(), binary(), binary(), binary()) :: binary()
   def sign(app_hdr_xml, document_xml, private_key_der, certificate_der) do
@@ -67,7 +70,7 @@ defmodule Isox.Xmldsig.Signer do
 
   @doc """
   Monta `<ds:Signature>` a partir de uma lista arbitrária de referências
-  já canônicas — o núcleo comum aos dois perfis do manual. `key_info_xml`
+  já canônicas, o núcleo comum aos dois perfis do manual. `key_info_xml`
   entra pronto (já contém o `Id` que a referência correspondente usa em
   `URI="#..."`) porque quem monta a lista de referências é quem sabe qual
   delas aponta pro `KeyInfo`.
@@ -86,7 +89,7 @@ defmodule Isox.Xmldsig.Signer do
 
   @doc """
   Monta `<ds:KeyInfo>` com `<ds:X509IssuerSerial>` (tabela 2, item 1.2.3.1
-  do manual) — nome do emissor (DN) e número de série do certificado, não
+  do manual): nome do emissor (DN) e número de série do certificado, não
   o certificado inteiro embutido. É assim que o manual descreve: quem
   verifica é responsável por manter sua própria base de números de série
   e chaves públicas dos certificados (§3.3, nota de rodapé), não por
@@ -153,7 +156,7 @@ defmodule Isox.Xmldsig.Signer do
   # pra isso em :public_key). Cobre os atributos comuns em certificados
   # ICP-Brasil (CN, OU, O, L, ST, C), com fallback pelo OID pra qualquer
   # outro. A ordem é a da própria codificação do certificado, não
-  # necessariamente "CN primeiro" como no exemplo do manual — validar
+  # necessariamente "CN primeiro" como no exemplo do manual. Validar
   # contra certificado real de CERTPIA/CERTPIC quando existir (issue #34).
   @oid_short_names %{
     {2, 5, 4, 3} => "CN",

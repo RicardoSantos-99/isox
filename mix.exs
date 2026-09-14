@@ -2,7 +2,7 @@ defmodule Isox.MixProject do
   use Mix.Project
 
   @source_url "https://github.com/RicardoSantos-99/isox"
-  @version "0.1.0"
+  @version "0.2.0"
 
   def project do
     [
@@ -36,9 +36,10 @@ defmodule Isox.MixProject do
   defp elixirc_paths(_), do: ["lib"]
 
   defp description do
-    "Codec ISO 20022 do catálogo de mensagens do SPI (Pix) — encode/decode " <>
-      "genéricos por envelope (cabeçalho + mensagem), mais um módulo apartado " <>
-      "de assinatura XMLDSig (perfil do Manual de Segurança do SFN)."
+    "Codec ISO 20022 do catálogo de mensagens do SPI (Pix): encode e decode " <>
+      "genéricos por envelope, dicionário de campos com o nome de cada um no " <>
+      "catálogo do BCB, e assinatura XMLDSig no perfil do Manual de Segurança " <>
+      "do SFN."
   end
 
   defp package do
@@ -59,6 +60,10 @@ defmodule Isox.MixProject do
         Modelos: [
           Isox.AppHdr,
           Isox.Envelope
+        ],
+        "Dicionário de campos": [
+          Isox.Dictionary,
+          Isox.Dictionary.Entry
         ],
         "Mensagens (API de baixo nível)": [
           Isox.Registry,

@@ -1,7 +1,12 @@
 defmodule Isox.Pibr002 do
   @moduledoc """
-  Modelo ISO 20022 do pibr.002 (echo reply), versão 1.3 — pong:
-  ecoa `OrgnlData` com o `Data` recebido no pibr.001 correspondente.
+  Eco: o pong do SPI.
+
+  Versão 1.3. Devolve em `orgnl_data` o mesmo texto que veio no `data` da
+  `Isox.Pibr001` correspondente. O `msg_id` daqui é novo: é o desta
+  resposta, não o do pedido.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

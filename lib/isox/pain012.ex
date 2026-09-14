@@ -1,30 +1,42 @@
 defmodule Isox.Pain012 do
   @moduledoc """
-  Modelo ISO 20022 do pain.012 (resposta a pain.009/pain.011 —
-  aceite ou rejeição de mandato), versões 1.3 e 1.4 coexistindo.
+  Resposta sobre uma recorrência do Pix Automático: aceita ou recusa uma
+  `Isox.Pain009` ou uma `Isox.Pain011`.
 
-  `UndrlygAccptncDtls` é `max: ilimitado` no schema — `encode/3` aceita
-  1 mensagem ou uma lista (lote: vários `UndrlygAccptncDtls` na mesma
-  `Document`) e `decode/1` devolve 1 struct ou uma lista de volta,
-  mesmo padrão do `Pacs002`/`Pacs004`/`Pacs008`. O mandato original aqui
-  difere do `Pain009`/`Pain011`: tem `Dbtr.PstlAdr.TwnNm` (endereço,
-  opcional) e `MndtRef` (opcional) que os outros dois não têm, e não tem
-  `Adjstmnt` — conferido contra o schema real de cada mensagem, não
-  assumido por semelhança.
+  Versões 1.3 e 1.4 coexistindo. `accptd` é o campo que se lê primeiro, e
+  `mndt_sts` diz a que mensagem esta resposta se refere: `"PDNG"` responde
+  a uma pain.009, `"CCLD"` responde a uma pain.011.
 
-  `MndtPrcgDtls` é `opcional (lista, 0 a 3)` aqui (diferente do `Pain009`,
-  onde é obrigatório com exatamente 3) — `SplmtryData` ganha ainda
-  `MndtSts`.
+  ## A cópia da recorrência difere das outras duas
 
-  Regra da planilha do catálogo, sem contrapartida estrutural no XSD:
-  `accptd == "false"` exige `rjct_rsn_prtry` presente e `mndt_sts`/
-  `mndt_prcg_dtls` ausentes; `accptd == "true"` exige o oposto
-  (`rjct_rsn_prtry` ausente, `mndt_sts` presente). `encode/3` valida
-  isso explicitamente — confirmado nos 12 exemplos oficiais do BCB,
-  sem exceção. A composição exata de `mndt_prcg_dtls` (que domínios
-  acompanham qual `mndt_sts`) não é validada — regra mais profunda,
-  documentada na planilha mas não verificável aqui sem duplicar a
-  lógica de negócio inteira.
+  O bloco do mandato original aqui não é igual ao da pain.009 nem ao da
+  pain.011. Tem `Dbtr.PstlAdr.TwnNm` e `MndtRef`, que as outras não têm, e
+  não tem `Adjstmnt`. Isso foi conferido contra o schema real de cada uma,
+  não deduzido por semelhança.
+
+  `MndtPrcgDtls` é opcional e vai de 0 a 3 itens, diferente da pain.009,
+  que exige exatamente 3. `SplmtryData` ganha ainda `MndtSts`.
+
+  ## Regra cruzada que o XSD não expressa
+
+  Validada em `encode/3`, a partir da planilha e confirmada nos 12
+  exemplos oficiais do BCB, sem exceção:
+
+  - `accptd` falso exige `rjct_rsn_prtry` presente, e `mndt_sts` e
+    `mndt_prcg_dtls` ausentes.
+  - `accptd` verdadeiro exige o oposto: `rjct_rsn_prtry` ausente e
+    `mndt_sts` presente.
+
+  Que domínios de `mndt_prcg_dtls` acompanham qual `mndt_sts` não é
+  validado aqui. A regra está na planilha, mas verificá-la exigiria
+  duplicar a lógica de negócio inteira do Pix Automático.
+
+  ## Lote
+
+  `UndrlygAccptncDtls` é ilimitado no schema. `encode/3` aceita uma
+  mensagem ou uma lista, e `decode/1` devolve uma struct ou uma lista.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -89,11 +101,11 @@ defmodule Isox.Pain012 do
 
   @doc """
   Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
-  dada. Aceita 1 mensagem ou uma lista de mensagens (lote — vira vários
+  dada. Aceita 1 mensagem ou uma lista de mensagens (lote: vira vários
   `UndrlygAccptncDtls` na mesma `Document`).
 
   `msg_id`/`created_at`/`instg_agt_ispb` são de `GrpHdr` (uma vez por
-  mensagem XML) — em lote, têm que ser iguais em todos os itens da
+  mensagem XML). Em lote, têm que ser iguais em todos os itens da
   lista.
   """
   @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
@@ -122,7 +134,8 @@ defmodule Isox.Pain012 do
   end
 
   @doc """
-  Decodifica um XML de pain.012 de volta para a struct — ou, quando a
+  Decodifica um XML de pain.012 de volta para a struct, ou
+  para uma lista de structs quando a
   mensagem traz mais de um `UndrlygAccptncDtls` (lote), para uma lista
   de structs.
   """
@@ -180,7 +193,7 @@ defmodule Isox.Pain012 do
   # rjct_rsn_prtry); accptd "true" nunca leva rjct_rsn_prtry, e sempre
   # leva mndt_sts. O XSD não força nada disso (RjctRsn/MndtSts/
   # MndtPrcgDtls são todos opcionais pro schema, sem vínculo entre si
-  # declarado) — sem esta checagem, uma resposta de aceite sem
+  # declarado). Sem esta checagem, uma resposta de aceite sem
   # mndt_sts, ou uma rejeição carregando mndt_sts, passava sem erro
   # nenhum.
   defp validate_acceptance_consistency(%{accptd: "false"} = m) do

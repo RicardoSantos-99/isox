@@ -1,10 +1,18 @@
 defmodule Isox.Reda017 do
   @moduledoc """
-  Modelo ISO 20022 do reda.017 (relatório de dados de
-  participante), versão 1.2 — reflete o cadastro atual, não é resposta a
-  um pedido específico.
+  Relatório de dados de participante.
 
-  `MktSpcfcAttr.Nm` (enum de valor único `"PRAZOCONFI"`) fica fixo.
+  Versão 1.2. Reflete o cadastro atual, não é resposta a um pedido
+  específico.
+
+  No perfil do SPI, o que ele carrega é o prazo de confirmação de
+  encerramento: as 24 horas que o liquidante atual tem para confirmar o
+  fim do relacionamento com um indireto para quem há novo pedido de
+  registro em suspenso. É o outro lado do `"QUED"` da `Isox.Reda016`.
+
+  `MktSpcfcAttr.Nm` tem valor único (`"PRAZOCONFI"`) e fica fixo.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

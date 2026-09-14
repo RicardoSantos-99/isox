@@ -1,17 +1,20 @@
 defmodule Isox.Camt052 do
   @moduledoc """
-  Modelo ISO 20022 do camt.052 (relação de lançamentos da Conta
-  PI, resposta a camt.060), versão 1.3.
+  Relação de lançamentos da Conta PI: a resposta a uma `Isox.Camt060` que
+  pediu `REL`, `TRD` ou `TRT`.
 
-  `Rpt` é `max: ilimitado` no schema — `camt.060` sempre pede o relatório
-  de uma conta por vez, então o caminho comum é 1, mas `encode/3` aceita
-  1 mensagem ou uma lista (lote: vários `Rpt` na mesma `Document`) e
-  `decode/1` devolve 1 struct ou uma lista de volta, mesmo padrão do
-  `Pacs002`/`Pacs004`/`Pacs008` (que têm exemplo oficial de lote real).
+  Versão 1.3. O perfil do BCB é enxuto de propósito: esta mensagem não
+  traz lançamento nenhum, traz a contagem (`nb_of_ntries`) e o hash do
+  arquivo gerado (`addtl_rpt_inf`). O arquivo em si vem pela interface de
+  arquivos, e o detalhe de um lançamento específico é a `Isox.Camt054`.
 
-  Este perfil do BCB é resumido: só conta de lançamentos
-  (`NbOfNtries`) e text livre (`AddtlRptInf`) — o detalhamento por
-  lançamento é o camt.054, não este.
+  ## Lote
+
+  `Rpt` é ilimitado no schema. Como a camt.060 pede uma conta por vez, o
+  caminho comum é 1, mas `encode/3` aceita uma mensagem ou uma lista, e
+  `decode/1` devolve uma struct ou uma lista, conforme o XML.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -37,10 +40,10 @@ defmodule Isox.Camt052 do
 
   @doc """
   Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
-  dada. Aceita 1 mensagem ou uma lista de mensagens (lote — vira vários
+  dada. Aceita 1 mensagem ou uma lista de mensagens (lote: vira vários
   `Rpt` na mesma `Document`).
 
-  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML) — em
+  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML). Em
   lote, têm que ser iguais em todos os itens da lista.
   """
   @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
@@ -68,7 +71,8 @@ defmodule Isox.Camt052 do
   end
 
   @doc """
-  Decodifica um XML de camt.052 de volta para a struct — ou, quando a
+  Decodifica um XML de camt.052 de volta para a struct, ou
+  para uma lista de structs quando a
   mensagem traz mais de um `Rpt` (lote), para uma lista de structs.
   """
   @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}

@@ -74,7 +74,7 @@ defmodule Isox.Pain009Test do
     assert reason =~ "boolean válido"
   end
 
-  # MndtPrcgDtls é minOccurs="3" maxOccurs="3" no schema real — exatamente
+  # MndtPrcgDtls é minOccurs="3" maxOccurs="3" no schema real: exatamente
   # 3, não "pelo menos 1". Mais de 3 tinha que ser rejeitado e não era
   # (motor só checava o mínimo).
   test "mais de 3 MndtPrcgDtls é rejeitado (schema real exige exatamente 3)" do

@@ -1,26 +1,39 @@
 defmodule Isox.Trck002 do
   @moduledoc """
-  Modelo ISO 20022 do trck.002 (autorrelato de transferência
-  entre contas do mesmo participante — book transfer), versão 1.1.
-  Independente de pacs.008/002; responde-se com camt.025.
+  Autorrelato de transferência interna: o participante avisa ao BC um
+  pagamento que ele liquidou por dentro, sem passar pelo SPI.
 
-  `TrckrStsAndTx/Tx` é `max: ilimitado` no schema — `encode/3` aceita 1
-  mensagem ou uma lista (lote: vários `Tx` na mesma `Document`) e
-  `decode/1` devolve 1 struct ou uma lista de volta, mesmo padrão do
-  `Pacs002`/`Pacs004`/`Pacs008`. `TxSts.Sts` (enum de valor único
-  `"ACCC"`) fica fixo — book transfer é sempre reportado como já
-  efetivado.
+  Versão 1.1. É o chamado book transfer. Independe de pacs.008 e
+  pacs.002, e a resposta é uma `Isox.Camt025`.
 
-  3 regras da planilha do catálogo (BCB) que o XSD sozinho não
-  expressa, validadas em `encode/3`:
-  - `cdtr_acct_proxy` (chave Pix) é obrigatório quando `lcl_instrm` é
-    `"DICT"`/`"QRDN"`/`"QRES"`/`"APDN"`/`"APES"`/`"INIC"`, e proibido
-    quando é `"MANU"`/`"AUTO"`.
-  - `cdtr_acct_type` nunca pode ser `"SLRY"` (Conta-Salário não recebe
-    pagamentos) — mesmo o XSD reusando o mesmo enum de 5 opções pros
-    dois lados (devedor/credor).
-  - `instr_id` presente (transação de devolução, análoga a uma
-    `Pacs004`) exige `lcl_instrm == "MANU"`.
+  `TxSts.Sts` tem valor único (`"ACCC"`) e fica fixo: só se reporta o que
+  já foi liquidado.
+
+  ## Três regras da planilha que o XSD não expressa
+
+  Validadas em `encode/3`:
+
+  - `cdtr_acct_proxy`, a chave Pix, é obrigatório quando `lcl_instrm` é
+    `"DICT"`, `"QRDN"`, `"QRES"`, `"APDN"`, `"APES"` ou `"INIC"`, e
+    proibido quando é `"MANU"` ou `"AUTO"`.
+  - `cdtr_acct_type` nunca pode ser `"SLRY"`, porque conta-salário não
+    recebe pagamento. O XSD aceita porque reusa o mesmo enum de cinco
+    opções para os dois lados.
+  - `instr_id` presente significa que a transação reportada é uma
+    devolução, e devolução exige `lcl_instrm` igual a `"MANU"`.
+
+  ## Prazo e indicador de nível de serviço
+
+  O Manual de Tempos pede 99% dos reportes em até 300 segundos. Isso é
+  percentil, não limite por mensagem: reporte atrasado continua sendo
+  aceito. O prazo que é regra são os 30 dias.
+
+  ## Lote
+
+  `TrckrStsAndTx/Tx` é ilimitado no schema. `encode/3` aceita uma mensagem
+  ou uma lista, e `decode/1` devolve uma struct ou uma lista.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -75,10 +88,10 @@ defmodule Isox.Trck002 do
 
   @doc """
   Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
-  dada. Aceita 1 mensagem ou uma lista de mensagens (lote — vira vários
+  dada. Aceita 1 mensagem ou uma lista de mensagens (lote: vira vários
   `Tx` na mesma `Document`).
 
-  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML) — em
+  `msg_id`/`created_at` são de `GrpHdr` (uma vez por mensagem XML). Em
   lote, têm que ser iguais em todos os itens da lista.
   """
   @spec encode(t() | [t(), ...], AppHdr.t(), version()) ::
@@ -107,7 +120,8 @@ defmodule Isox.Trck002 do
   end
 
   @doc """
-  Decodifica um XML de trck.002 de volta para a struct — ou, quando a
+  Decodifica um XML de trck.002 de volta para a struct, ou
+  para uma lista de structs quando a
   mensagem traz mais de um `Tx` (lote), para uma lista de structs.
   """
   @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}

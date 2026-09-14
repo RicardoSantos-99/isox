@@ -1,23 +1,35 @@
 defmodule Isox.Pacs002 do
   @moduledoc """
-  Modelo ISO 20022 do pacs.002 (relatório de status de pagamento),
-  versões 1.16 e 1.17 (ADR 0002) — a resposta a um pacs.008, referenciando
-  a mensagem original por `OrgnlInstrId`/`OrgnlEndToEndId` e informando o
-  status (`TxSts`) e, quando rejeitada, o motivo.
+  Relatório de status: a resposta a uma `Isox.Pacs008` ou a uma
+  `Isox.Pacs004`.
 
-  `TxInfAndSts` é `max: ilimitado` no XSD e o catálogo oficial documenta
-  lote de verdade (`pacs.002_SPI_10_msg.xml`, 10 transações numa mensagem
-  só). `encode/3` aceita 1 mensagem ou uma lista (lote); `decode/1`
-  devolve 1 struct quando o XML tem 1 `TxInfAndSts`, ou uma lista quando
-  tem mais — sem uma segunda API paralela pra isso.
+  Versões 1.16 e 1.17 (ADR 0002). Aponta a mensagem original por
+  `orgnl_instr_id` e `orgnl_end_to_end_id`, e diz em `tx_sts` o que
+  aconteceu. Quando rejeitou, `sts_rsn_cd` diz por quê.
 
-  `StsRsnInf` continua modelado como no máximo 1 motivo por transação,
-  com sua lista de `AddtlInf`.
+  Repare na diferença entre os dois identificadores: `orgnl_instr_id`
+  aceita tanto pagamento quanto devolução, e `orgnl_end_to_end_id` só
+  aceita pagamento. É o que permite responder a uma devolução ainda
+  apontando para o pagamento que a originou.
 
-  Mesma validação em duas camadas do `Pacs008`: `encode/3` confere os
-  campos obrigatórios do modelo e depois reaproveita o `decode` do próprio
-  módulo gerado pra validar pattern/enum/cardinalidade sem duplicar regra
-  — inclusive o enum de `Rsn.Cd`, que diverge entre 1.16 e 1.17.
+  ## Lote
+
+  `TxInfAndSts` é ilimitado no XSD, e o catálogo documenta lote de
+  verdade (`pacs.002_SPI_10_msg.xml`, 10 transações numa mensagem só).
+  `encode/3` aceita uma mensagem ou uma lista, e `decode/1` devolve uma
+  struct ou uma lista, conforme o XML.
+
+  `StsRsnInf` segue modelado como no máximo um motivo por transação, com
+  sua lista de `AddtlInf`.
+
+  ## Validação
+
+  `encode/3` confere os campos obrigatórios e depois faz o caminho de
+  volta pelo módulo gerado, reaproveitando a validação de pattern, enum e
+  cardinalidade. Isso inclui o enum de `Rsn.Cd`, que diverge entre 1.16 e
+  1.17.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr
@@ -62,12 +74,12 @@ defmodule Isox.Pacs002 do
 
   @doc """
   Monta o XML (envelope completo, `AppHdr` + `Document`) para a versão
-  dada. Aceita 1 mensagem ou uma lista de mensagens (lote — vira várias
+  dada. Aceita 1 mensagem ou uma lista de mensagens (lote: vira várias
   `TxInfAndSts` na mesma `Document`, com `NbOfTxs` implícito no XSD desta
   mensagem).
 
   `msg_id`/`created_at` são campos de `GrpHdr` (um por mensagem XML,
-  não por transação) — em lote, precisam ser iguais em todos os itens da
+  não por transação). Em lote, precisam ser iguais em todos os itens da
   lista; se divergirem, `encode/3` erra em vez de escolher um deles em
   silêncio.
   """
@@ -96,8 +108,8 @@ defmodule Isox.Pacs002 do
   end
 
   @doc """
-  Decodifica um XML de pacs.002 (qualquer versão) de volta para a struct
-  — ou, quando a mensagem traz mais de uma `TxInfAndSts` (lote), para
+  Decodifica um XML de pacs.002 (qualquer versão) de volta para a
+  struct, ou para uma lista de structs quando a mensagem traz mais de uma `TxInfAndSts` (lote), para
   uma lista de structs, uma por transação.
   """
   @spec decode(binary()) :: {:ok, t() | [t(), ...], version()} | {:error, term()}

@@ -1,12 +1,24 @@
 defmodule Isox.Pain011 do
   @moduledoc """
-  Modelo ISO 20022 do pain.011 (cancelamento de mandato), versão
-  1.3 — carrega uma cópia inteira do mandato original (`OrgnlMndt`, campos
-  prefixados `orgnl_*`, mesmo formato do `Pain009` sem `Adjstmnt`, que não
-  existe neste schema) mais o motivo do cancelamento (`CxlRsn`).
+  Cancelamento de recorrência do Pix Automático.
 
-  `SplmtryData` é opcional como um todo aqui (diferente do `Pain009`,
-  onde é obrigatório) — `mndt_prcg_dtls` vazio omite o contêiner inteiro.
+  Versão 1.3. Carrega uma cópia inteira da recorrência original, nos
+  campos prefixados `orgnl_`, mais o motivo do cancelamento. A resposta é
+  uma `Isox.Pain012` com `mndt_sts` igual a `"CCLD"`.
+
+  A cópia tem o mesmo formato da `Isox.Pain009` sem o bloco `Adjstmnt`,
+  que não existe neste schema.
+
+  `SplmtryData` é opcional aqui, ao contrário da pain.009, onde é
+  obrigatório: `mndt_prcg_dtls` vazio omite o contêiner inteiro. Quando
+  aparece, são exatamente dois itens, `CRTN` e depois `CLTN`.
+
+  ## Lote
+
+  `UndrlygCxlDtls` é ilimitado no schema. `encode/3` aceita uma mensagem
+  ou uma lista, e `decode/1` devolve uma struct ou uma lista.
+
+  #{Isox.Dictionary.doc(__MODULE__)}
   """
 
   alias Isox.AppHdr

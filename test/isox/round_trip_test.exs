@@ -2,14 +2,14 @@ defmodule Isox.RoundTripTest do
   @moduledoc """
   Round-trip contra os exemplos oficiais do catálogo (issue #7): `parse`
   seguido de `build` deve reproduzir um XML que, reparseado, dá o mesmo
-  termo — não byte a byte (`docs/roadmap.md`: "ou XML semanticamente
+  termo, não byte a byte (`docs/roadmap.md`: "ou XML semanticamente
   idêntico"), porque nada aqui promete preservar espaço em branco ou tag
   vazia vs. `<Tag></Tag>`.
 
   Os XSDs e os exemplos do catálogo não são redistribuídos aqui: este
   teste lê de um caminho local, fora do controle de versão, apontado pela
   variável de ambiente `CATALOGO_SPI_DIR`. Sem essa variável (ex.: no CI),
-  a suíte inteira é pulada — com aviso, não em silêncio.
+  a suíte inteira é pulada, com aviso, não em silêncio.
   """
 
   alias Isox.Registry

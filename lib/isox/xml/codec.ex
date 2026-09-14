@@ -1,5 +1,5 @@
 defmodule Isox.Xml.Codec do
-  # Motor genérico de parse/build orientado a Isox.Schema — não
+  # Motor genérico de parse/build orientado a Isox.Schema. Não
   # conhece nenhuma mensagem específica, só percorre a árvore do schema
   # contra o XML (na entrada) ou contra o termo genérico (na saída).
   #
@@ -14,9 +14,9 @@ defmodule Isox.Xml.Codec do
   #
   # compile_template/3 + render/2 são a terceira API do ADR 0003: compila
   # um termo com lacunas (gap/1) uma vez, e cada renderização só preenche
-  # as lacunas — sem percorrer o schema de novo.
+  # as lacunas, sem percorrer o schema de novo.
   #
-  # Motor interno — não faz parte da API pública da lib (quem consome usa
+  # Motor interno. Não faz parte da API pública da lib (quem consome usa
   # os módulos de mensagem, ex. Isox.Pacs008).
   @moduledoc false
 
@@ -34,7 +34,7 @@ defmodule Isox.Xml.Codec do
   rescue
     e -> {:error, Exception.message(e)}
   catch
-    # XML malformado faz o xmerl sair com exit, não raise — e isso não pode
+    # XML malformado faz o xmerl sair com exit, não raise, e isso não pode
     # derrubar o processo chamador; é entrada não confiável (PSP), não bug.
     :exit, reason -> {:error, inspect(reason)}
   end
@@ -42,7 +42,7 @@ defmodule Isox.Xml.Codec do
   @doc """
   Monta o XML (com prólogo) a partir do termo genérico, contra o schema.
 
-  `namespace`, quando dado, vira o `xmlns` da tag raiz — namespace é
+  `namespace`, quando dado, vira o `xmlns` da tag raiz. Namespace é
   declaração XML, não um `xs:attribute` do schema, então não é modelado
   como atributo comum; sem ele, o XML montado não teria como ser
   redespachado por `Isox.Registry.decode/1`.
@@ -82,7 +82,7 @@ defmodule Isox.Xml.Codec do
   @doc """
   Compila `{schema, termo com lacunas}` num template canônico: monta o XML
   normalmente (reaproveita `encode/3`, mesma árvore, mesma validação de
-  atributo obrigatório) e depois separa os trechos fixos das lacunas — sem
+  atributo obrigatório) e depois separa os trechos fixos das lacunas, sem
   percorrer o schema de novo. Pensado pro caminho quente do simulador: o
   custo de percorrer a árvore é pago uma vez aqui, não a cada mensagem.
   """
@@ -187,7 +187,7 @@ defmodule Isox.Xml.Codec do
   # dentro de um `xs:choice` com mais de 1 elemento no grupo) a lista de
   # elementos do grupo inteiro. Duas opções de grupo podem compartilhar tag
   # (ex. reda.022: `ReqdModContato` e `ReqdModDiretor` têm PhneNb/EmailAdr/
-  # Rspnsblty em comum, só `Nm` distingue) — "presente" não basta, escolhe a
+  # Rspnsblty em comum, só `Nm` distingue): "presente" não basta, escolhe a
   # opção com MAIS tags batendo, não a primeira com alguma batendo, senão um
   # exemplar do ramo com o campo distintivo ausente escolhe o ramo errado e
   # perde esse campo.
@@ -271,13 +271,13 @@ defmodule Isox.Xml.Codec do
     value
   end
 
-  # xs:pattern casa contra o valor inteiro, não uma substring — Regex.match?
+  # xs:pattern casa contra o valor inteiro, não uma substring, então Regex.match?
   # do Elixir não ancora sozinho.
   defp anchored_regex(pattern), do: Regex.compile!("^(?:" <> pattern <> ")$")
 
   # fractionDigits/totalDigits/minInclusive/maxInclusive (ex.:
   # ActiveCurrencyAndAmount_SimpleType: fractionDigits 2, totalDigits 18,
-  # minInclusive 0) não tinham validação nenhuma antes — pattern/enum/
+  # minInclusive 0) não tinham validação nenhuma antes: pattern/enum/
   # tamanho não cobrem faixa numérica nem casas decimais, então um valor
   # monetário negativo, com casas decimais demais, ou nem sequer numérico
   # ("abc") passava reto pelo parse. Sem lib de decimal: os valores desse
@@ -340,11 +340,11 @@ defmodule Isox.Xml.Codec do
   end
 
   # xs:date (ex.: OrgnlTxRef/IntrBkSttlmDt do pacs.002) nunca vem com
-  # pattern no XSD do catálogo — <xs:restriction base="xs:date"/> vazio,
+  # pattern no XSD do catálogo: <xs:restriction base="xs:date"/> vazio,
   # confiando na validação léxica embutida do xs:date. Este motor não
   # implementa isso, então sem este check um valor não-data passava reto
   # pelo parse e só quebrava (raise não capturado) mais tarde, dentro do
-  # parse_date! de quem lê o termo — depois da zona protegida pelo rescue
+  # parse_date! de quem lê o termo, depois da zona protegida pelo rescue
   # de Codec.parse/2. Usa o mesmo Date.from_iso8601/1 que esse parse final
   # já usa, pra não ter padrão duplo entre o que valida aqui e o que quem
   # chama espera conseguir parsear depois.
@@ -357,7 +357,7 @@ defmodule Isox.Xml.Codec do
   defp validate_date!(_value, _type), do: :ok
 
   # xs:boolean (ex.: TrckgInd/DtAdjstmntRuleInd do pacs.009/011/012)
-  # também nunca vem com pattern no XSD do catálogo —
+  # também nunca vem com pattern no XSD do catálogo,
   # <xs:restriction base="xs:boolean"/> vazio, mesma situação do
   # xs:date acima: confia na validação léxica embutida do tipo, que
   # este motor não implementa de nenhum outro jeito. Sem este check,
@@ -375,7 +375,7 @@ defmodule Isox.Xml.Codec do
   # named_captures, não Regex.run posicional: quando o grupo fracionário
   # opcional não participa do match (valor sem ponto decimal, ex. "0"), o
   # :re do Erlang derruba esse grupo à direita da lista em vez de devolver
-  # "" — Regex.run vem com aridade variável nesse caso, e um case por
+  # "": Regex.run vem com aridade variável nesse caso, e um case por
   # posição quebra. named_captures sempre devolve as 3 chaves.
   @decimal_pattern ~r/^(?<sign>-?)(?<int>\d+)(?:\.(?<frac>\d+))?$/
 

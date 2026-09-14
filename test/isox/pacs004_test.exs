@@ -74,7 +74,7 @@ defmodule Isox.Pacs004Test do
 
   # TxInf é `max: ilimitado` no XSD (confirmado com exemplo oficial do
   # BCB: pacs.004_SPI_10_msg.xml vem com 10 transações numa mensagem só)
-  # — encode/3 aceita uma lista de mensagens e decode/1 devolve uma
+  # encode/3 aceita uma lista de mensagens e decode/1 devolve uma
   # lista de volta.
   test "lote: encode aceita lista, decode devolve lista de volta" do
     outra = %{@message | rtr_id: "D98765432202609121030abcdefghijl", rtr_rsn_cd: "SL02"}

@@ -2,13 +2,13 @@ defmodule Isox.Registry do
   @moduledoc """
   Descobre os módulos `Isox.Generated.<Mensagem>.<Versao>` já
   carregados e despacha o parse pela combinação namespace + `MsgDefIdr`
-  (ADR 0002) — os dois precisam concordar, ou é erro.
+  (ADR 0002). Os dois precisam concordar, ou é erro.
   """
 
   @doc """
   Todos os módulos gerados que expõem `namespace/0` (exclui o `Head001`,
   que não é mensagem). Lê a lista de módulos da aplicação compilada
-  (`Application.spec/2`) em vez de `:code.all_loaded/0` — este só enxerga
+  (`Application.spec/2`) em vez de `:code.all_loaded/0`, que só enxerga
   módulo já referenciado em tempo de execução, e nada aqui garante isso.
   """
   @spec generated_modules() :: [module()]

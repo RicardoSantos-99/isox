@@ -33,7 +33,7 @@ defmodule Isox.Xmldsig.SignatureRoundTripTest do
     certificate_der: certificate_der
   } do
     # Regressão: usar `valor || :atomo_de_erro` como fallback de "nil" num
-    # guard `not is_nil/1` não funciona — o próprio átomo de erro também
+    # guard `not is_nil/1` não funciona, porque o próprio átomo de erro também
     # não é nil, então o guard passava e o código seguia tratando o átomo
     # como se fosse o elemento encontrado, e explodia mais adiante.
     envelope = assemble_envelope(app_hdr_xml(), document_xml(), "")
@@ -124,12 +124,12 @@ defmodule Isox.Xmldsig.SignatureRoundTripTest do
          private_key_der: private_key_der,
          certificate_der: certificate_der
        } do
-    # Ordem canônica de atributo é alfabética por nome local — "Zebra"
+    # Ordem canônica de atributo é alfabética por nome local: "Zebra"
     # antes de "Apple" é válido como XML, mas não-canônico. sign/4 não
     # canonicaliza (é o contrato: quem chama garante isso, ADR 0006), então
     # assina os bytes como vieram; verify/2 sempre recanonicaliza de
     # verdade (não pode confiar no que chegou de terceiro) e reordenaria
-    # pra "Apple" antes de "Zebra" — os dois digests do AppHdr divergem.
+    # pra "Apple" antes de "Zebra", e os dois digests do AppHdr divergem.
     non_canonical_app_hdr =
       ~s(<AppHdr xmlns="urn:pix" Zebra="2" Apple="1"><Fr>11111111</Fr><To>22222222</To>) <>
         ~s(<BizMsgIdr>M12345678901234567890123456789</BizMsgIdr>) <>
